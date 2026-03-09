@@ -1,74 +1,122 @@
-<script>
-    const params = new URLSearchParams(window.location.search);
-    const cid = params.get('id');
-    const type = params.get('type'); // Ab ye direct P00_Human ya P00_Value lega
-    const display = document.getElementById('display');
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>10haath Master Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root { --red: #e63946; --blue: #1d3557; --gray: #f4f7f6; --green: #2a9d8f; --orange: #f4a261; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--gray); padding: 20px; }
+        .card { background: white; max-width: 650px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); margin: auto; text-align: center; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+        .cat-btn { padding: 20px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px; }
+        .cat1 { background: var(--red); } .cat2 { background: var(--orange); } 
+        .cat3 { background: var(--green); } .cat4 { background: #457b9d; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .btn { background: var(--blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        #formArea { display: none; text-align: left; margin-top: 20px; }
+        #qrResult { display: none; margin-top: 30px; padding: 20px; border: 2px dashed var(--blue); border-radius: 15px; }
+    </style>
+</head>
+<body>
 
-    if(cid && type) {
-        // Photo Audit: Column name 'Cust_ID(No.)' exact match
-        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4/search?Cust_ID(No.)=${cid}&sheet=${type}`)
-        .then(res => res.json())
-        .then(rows => {
-            if(rows.length > 0) {
-                renderWorkflow(rows[0], type);
-            } else {
-                display.innerHTML = "<h2 style='color:red'>Data Not Found</h2><p>ID: " + cid + " not in " + type + "</p>";
-            }
-        })
-        .catch(err => {
-            display.innerHTML = "<h2>Connection Error</h2>";
+<div class="card">
+    <h2>🖐️ 10haath Master Dashboard</h2>
+    <div class="grid" id="catGrid">
+        <button class="cat-btn cat1" onclick="openDirect('P00_Human')">CAT 1: HUMAN SAFETY<br>(SOS & GPS)</button>
+        <button class="cat-btn cat2" onclick="openDirect('P00_Value')">CAT 2: VALUE SAFETY<br>(Pet/Luggage/Vehicle)</button>
+        <button class="cat-btn cat3" onclick="loadSubCategory('cat3')">CAT 3: SMART SERVICES<br>(UPI/Biz/WiFi/etc)</button>
+        <button class="cat-btn cat4" onclick="openDirect('P13_Doc')">CAT 4: DOC VAULT<br>(Vehicle Docs)</button>
+    </div>
+
+    <div id="formArea">
+        <button onclick="location.reload()" style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold;">← Back</button>
+        <h3 id="catTitle" style="color:var(--blue); margin-bottom:15px;"></h3>
+        <div id="subSelectArea"></div>
+        <div id="fieldsArea"></div>
+        <button class="btn" onclick="generateAndSync()">CREATE QR & SYNC DATA</button>
+    </div>
+
+    <div id="qrResult">
+        <div id="qrcode" style="display: flex; justify-content: center;"></div>
+        <p id="qrIDLabel" style="font-weight:bold; color:var(--blue); margin-top:10px;"></p>
+    </div>
+</div>
+
+<script>
+    let currentSheet = "";
+    let currentServiceType = "";
+
+    const config = {
+        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
+        "P00_Value": ["Person_Name", "Email1", "Email2", "WACompany"],
+        "P13_Doc": ["Name", "Gadi_Number", "Drive_Link", "Drive_Password"],
+        "cat3": {
+            "P01_Pay": ["Name", "UPI_ID"],
+            "P03_Biz": ["Name", "Job", "Phone", "Social_Links"],
+            "P09_WiFi": ["Name", "SSID", "Password"]
+        }
+    };
+
+    function openDirect(sheet) {
+        currentSheet = sheet;
+        currentServiceType = sheet;
+        document.getElementById('catGrid').style.display = 'none';
+        document.getElementById('formArea').style.display = 'block';
+        document.getElementById('catTitle').innerText = sheet.replace('P00_', '').replace('P13_', '') + " Form";
+        renderFields(config[sheet]);
+    }
+
+    function loadSubCategory(catId) {
+        document.getElementById('catGrid').style.display = 'none';
+        document.getElementById('formArea').style.display = 'block';
+        document.getElementById('catTitle').innerText = "Select Smart Service";
+        
+        let html = `<select id="subType" onchange="updateSubFields()">
+                        <option value="">-- Select Service --</option>
+                        <option value="P01_Pay">UPI Pay</option>
+                        <option value="P03_Biz">Biz Card</option>
+                        <option value="P09_WiFi">WiFi Connect</option>
+                    </select>`;
+        document.getElementById('subSelectArea').innerHTML = html;
+    }
+
+    function updateSubFields() {
+        const type = document.getElementById('subType').value;
+        currentSheet = type; 
+        currentServiceType = type;
+        renderFields(config.cat3[type]);
+    }
+
+    function renderFields(fields) {
+        const area = document.getElementById('fieldsArea');
+        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Unique ID (Required)">`;
+        fields.forEach(f => {
+            area.innerHTML += `<input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')}">`;
         });
     }
 
-    function renderWorkflow(d, sheet) {
-        let h = `<span class="status-tag">Status: Active</span><hr>`;
+    function generateAndSync() {
+        const cid = document.getElementById('Cust_ID').value;
+        if(!cid || !currentSheet) return alert("Details bharo bhai!");
 
-        // --- CAT 1: HUMAN SAFETY (P00_Human) ---
-        if(sheet === 'P00_Human') {
-            // Photo Audit: 'Person_Name' aur 'Emergency1'
-            h += `<h2>🆘 SOS Alert</h2>
-                  <p>In case of emergency with <b>${d.Person_Name || 'this person'}</b>:</p>
-                  <button class="btn" style="background:#25D366" onclick="sendWA('${d.Emergency1}', 'Emergency_Alert')">WHATSAPP EMERGENCY CONTACT</button>
-                  <hr>
-                  <p>Found them? Send location/info below:</p>
-                  <input type="text" id="scNo" placeholder="Your Contact Number">
-                  <input type="text" id="scDk" placeholder="Current Location/Condition">
-                  <button class="btn" style="background:#444" onclick="updateLog('${d['Cust_ID(No.)']}', '${sheet}')">SEND LOG TO FAMILY</button>`;
-        } 
-        // --- CAT 2: VALUE SAFETY (P00_Value) ---
-        else if(sheet === 'P00_Value') {
-            // Photo Audit: P00_Value mein 'Email1' (for WA) aur 'Person_Name'
-            h += `<h2>🐾 Item/Pet Found</h2>
-                  <p>This belongs to <b>${d.Person_Name || 'Valued Customer'}</b></p>
-                  <button class="btn" style="background:#25D366" onclick="sendWA('${d.Email1}', 'Found_Your_Item')">MESSAGE OWNER</button>
-                  <hr>
-                  <p>Update owner about item status:</p>
-                  <input type="text" id="scNo" placeholder="Your Phone Number">
-                  <input type="text" id="scDk" placeholder="Status (e.g. Found at Park)">
-                  <button class="btn" style="background:#444" onclick="updateLog('${d['Cust_ID(No.)']}', '${sheet}')">SEND UPDATE</button>`;
-        }
+        const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${cid}&type=${currentSheet}`;
+        
+        document.getElementById('qrResult').style.display = "block";
+        document.getElementById('qrcode').innerHTML = "";
+        new QRCode(document.getElementById("qrcode"), { text: scanUrl, width: 200, height: 200 });
+        document.getElementById('qrIDLabel').innerText = "ID: " + cid;
 
-        display.innerHTML = h;
-    }
+        let data = { "Timestamp": new Date().toLocaleString(), "Cust_ID(No.)": cid };
+        let fields = (config[currentSheet]) ? config[currentSheet] : config.cat3[currentSheet];
+        fields.forEach(f => { data[f] = document.getElementById(f).value; });
 
-    function updateLog(id, sheet) {
-        const no = document.getElementById('scNo').value;
-        const dk = document.getElementById('scDk').value;
-        if(!no || !dk) return alert("Please fill details!");
-
-        // Photo Audit: 'ScannerNo.' aur 'Dikkat' columns (Note the dot in ScannerNo.)
-        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4/Cust_ID(No.)/${id}?sheet=${sheet}`, {
-            method: 'PATCH',
+        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${currentSheet}`, {
+            method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                "ScannerNo.": no, 
-                "Dikkat": dk, 
-                "Timestamp": new Date().toLocaleString() 
-            })
-        }).then(() => alert("Owner has been notified via Log!"));
-    }
-
-    function sendWA(num, msg) {
-        window.open(`https://wa.me/${num}?text=10haath_Alert:_${msg}`, '_blank');
+            body: JSON.stringify(data)
+        }).then(res => res.ok ? alert("Success! Data synced to " + currentSheet) : alert("Sheet Error! Check Tab Name."));
     }
 </script>
+</body>
+</html>

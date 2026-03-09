@@ -2,7 +2,7 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <title>10haath Master Builder</title>
+    <title>10haath Master Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --red: #e63946; --blue: #1d3557; --gray: #f4f7f6; --green: #2a9d8f; --orange: #f4a261; }
@@ -12,7 +12,7 @@
         .cat-btn { padding: 20px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px; }
         .cat1 { background: var(--red); } .cat2 { background: var(--orange); } 
         .cat3 { background: var(--green); } .cat4 { background: #457b9d; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         .btn { background: var(--blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; }
         #formArea { display: none; text-align: left; margin-top: 20px; }
         #qrResult { display: none; margin-top: 30px; padding: 20px; border: 2px dashed var(--blue); border-radius: 15px; }
@@ -25,13 +25,14 @@
     <div class="grid" id="catGrid">
         <button class="cat-btn cat1" onclick="openDirect('P00_Human')">CAT 1: HUMAN SAFETY<br>(SOS & GPS)</button>
         <button class="cat-btn cat2" onclick="openDirect('P00_Value')">CAT 2: VALUE SAFETY<br>(Pet/Luggage/Vehicle)</button>
-        <button class="cat-btn cat3" onclick="alert('Bhai, abhi CAT 1 aur 2 test karo!')">CAT 3: SMART SERVICES</button>
-        <button class="cat-btn cat4" onclick="alert('Coming Soon!')">CAT 4: DOC VAULT</button>
+        <button class="cat-btn cat3" onclick="loadSubCategory('cat3')">CAT 3: SMART SERVICES<br>(UPI/Biz/WiFi)</button>
+        <button class="cat-btn cat4" onclick="openDirect('P13_Doc')">CAT 4: DOC VAULT<br>(Vehicle Docs)</button>
     </div>
 
     <div id="formArea">
         <button onclick="location.reload()" style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold;">← Back</button>
         <h3 id="catTitle" style="color:var(--blue); margin-bottom:15px;"></h3>
+        <div id="subSelectArea"></div>
         <div id="fieldsArea"></div>
         <button class="btn" onclick="generateAndSync()">CREATE QR & SYNC DATA</button>
     </div>
@@ -43,53 +44,78 @@
 </div>
 
 <script>
-    let currentType = "";
-    // Photo Audit: Column names exact match as per your Google Sheet
-    const fieldConfig = {
-        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
-        "P00_Value": ["Person_Name", "Email1", "Email2", "WACompany"]
+    let currentSheet = "";
+    
+    // Config as per your Google Sheet structure
+    const config = {
+        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Email1", "WACompany"],
+        "P00_Value": ["Person_Name", "Email1", "WACompany"],
+        "P13_Doc": ["Name", "Gadi_Number", "Drive_Link", "Drive_Password"],
+        "cat3": {
+            "P01_Pay": ["Name", "UPI_ID", "Amount"],
+            "P03_Biz": ["Name", "Job", "Phone", "Social_Links"],
+            "P09_WiFi": ["Name", "SSID", "Password"]
+        }
     };
 
-    function openDirect(type) {
-        currentType = type;
+    function openDirect(sheet) {
+        currentSheet = sheet;
         document.getElementById('catGrid').style.display = 'none';
         document.getElementById('formArea').style.display = 'block';
-        document.getElementById('catTitle').innerText = (type === "P00_Human") ? "Human Safety Form" : "Value Safety Form";
+        document.getElementById('catTitle').innerText = sheet.replace('P00_', '').replace('P13_', '') + " Registration";
+        renderFields(config[sheet]);
+    }
+
+    function loadSubCategory() {
+        document.getElementById('catGrid').style.display = 'none';
+        document.getElementById('formArea').style.display = 'block';
+        document.getElementById('catTitle').innerText = "Select Smart Service";
         
+        let html = `<select id="subType" onchange="updateSubFields()">
+                        <option value="">-- Choose Service --</option>
+                        <option value="P01_Pay">UPI Payment QR</option>
+                        <option value="P03_Biz">Digital Biz Card</option>
+                        <option value="P09_WiFi">WiFi Auto-Connect</option>
+                    </select>`;
+        document.getElementById('subSelectArea').innerHTML = html;
+    }
+
+    function updateSubFields() {
+        const type = document.getElementById('subType').value;
+        if(!type) return;
+        currentSheet = type;
+        renderFields(config.cat3[type]);
+    }
+
+    function renderFields(fields) {
         const area = document.getElementById('fieldsArea');
-        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Unique ID (e.g. 7894)">`;
-        fieldConfig[type].forEach(f => {
+        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Unique ID (Required)">`;
+        fields.forEach(f => {
             area.innerHTML += `<input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')}">`;
         });
     }
 
     function generateAndSync() {
         const cid = document.getElementById('Cust_ID').value;
-        if(!cid) return alert("ID toh dalo bhai!");
+        if(!cid || !currentSheet) return alert("Pehle ID aur fields bharo!");
 
-        // GitHub Link
-        const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${cid}&type=${currentType}`;
+        // Live Link for GitHub Pages
+        const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${cid}&type=${currentSheet}`;
         
         document.getElementById('qrResult').style.display = "block";
         document.getElementById('qrcode').innerHTML = "";
         new QRCode(document.getElementById("qrcode"), { text: scanUrl, width: 200, height: 200 });
         document.getElementById('qrIDLabel').innerText = "ID: " + cid;
 
-        // Data object creation
-        let data = { 
-            "Timestamp": new Date().toLocaleString(),
-            "Cust_ID(No.)": cid 
-        };
-        fieldConfig[currentType].forEach(f => { data[f] = document.getElementById(f).value; });
+        let data = { "Timestamp": new Date().toLocaleString(), "Cust_ID(No.)": cid };
+        let fields = (config[currentSheet]) ? config[currentSheet] : config.cat3[currentSheet];
+        fields.forEach(f => { data[f] = document.getElementById(f).value; });
 
-        // SheetDB Call
-        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${currentType}`, {
+        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${currentSheet}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
-        })
-        .then(res => res.ok ? alert("Data Saved in " + currentType) : alert("Sheet Error! Check Tab Name."))
-        .catch(err => alert("Internet check karo!"));
+        }).then(res => res.ok ? alert("Mubarak ho! Data " + currentSheet + " mein save ho gaya.") : alert("Sheet Error! Check Tab Names."));
     }
 </script>
 </body>
