@@ -3,128 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>10haath Workflow Engine</title>
+    <title>10haath Smart Scanner</title>
     <style>
-        :root { --red: #e63946; --blue: #1d3557; --gray: #f4f7f6; --green: #2a9d8f; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--gray); padding: 20px; text-align: center; }
-        .box { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
-        .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 16px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        #timer { font-size: 24px; font-weight: bold; color: var(--red); margin: 15px 0; }
+        :root { --red: #e63946; --blue: #1d3557; --green: #25D366; --gray: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--gray); margin: 0; padding: 20px; text-align: center; color: #333; }
+        .card { background: white; padding: 25px; border-radius: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
+        .btn { display: block; width: 100%; padding: 15px; margin: 12px 0; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 16px; transition: 0.3s; box-sizing: border-box; }
+        .btn-wa { background: var(--green); }
+        .btn-red { background: var(--red); }
+        .btn-blue { background: var(--blue); }
+        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; background: #fdfdfd; font-size: 14px; }
+        .timer { font-size: 28px; font-weight: bold; color: var(--red); margin: 15px 0; }
+        .label { font-size: 0.85rem; color: #666; text-align: left; margin-top: 15px; font-weight: bold; }
         .hidden { display: none; }
+        .warning-box { margin-top: 15px; padding: 12px; background: #fff4f4; border-radius: 10px; border: 1px solid #ffcccc; text-align: left; font-size: 12px; color: #d63031; line-height: 1.5; }
     </style>
 </head>
 <body>
-    <div class="box" id="main-content">
-        <h2>Loading 10haath Service...</h2>
+    <div class="card" id="main-card">
+        <h2 id="status">Verifying QR...</h2>
+        <div id="workflow-area"></div>
     </div>
-
 <script>
     const params = new URLSearchParams(window.location.search);
     const cid = params.get('id');
     const type = params.get('type');
-    const sheetdb_url = "https://sheetdb.io/api/v1/vpozwh7cptzc4";
+    const API_BASE = "https://sheetdb.io/api/v1/vpozwh7cptzc4";
 
-    if(cid && type) {
-        fetch(`${sheetdb_url}/search?Cust_ID(No.)=${cid}&sheet=${type}`)
+    if (cid && type) {
+        fetch(`${API_BASE}/search?Cust_ID(No.)=${cid}&sheet=${type}`)
         .then(res => res.json())
         .then(data => {
-            if(data.length > 0) startWorkflow(data[0]);
-            else document.getElementById('main-content').innerHTML = "<h2>Invalid QR Code</h2>";
-        });
+            if (data && data.length > 0) startApp(data[0]);
+            else document.getElementById('status').innerText = "Data Not Found!";
+        })
+        .catch(err => document.getElementById('status').innerText = "Network Error!");
     }
 
-    function startWorkflow(d) {
-        let root = document.getElementById('main-content');
-        
-        // --- CATEGORY 1: SOS (PIN + GPS) ---
-        if(type === 'P00_Human') {
-            root.innerHTML = `<h2>🆘 SOS Alert</h2><p>Owner: <b>${d.Person_Name}</b></p>
-                <button class="btn" style="background:var(--green)" onclick="sendAlert('${d.Emergency1}', 'SOS')">WHATSAPP FAMILY (Savior)</button>
-                <div id="savior-form">
-                    <input type="text" id="scNo" placeholder="Your Mobile (%)">
-                    <input type="text" id="scDk" placeholder="Problem/Dikkat (%)">
-                    <button class="btn" style="background:var(--red)" onclick="submitLog('${d['Cust_ID(No.)']}')">SEND EMERGENCY LOG</button>
+    function startApp(d) {
+        document.getElementById('status').classList.add('hidden');
+        const area = document.getElementById('workflow-area');
+
+        // --- CAT 1 & 2: SAFETY FLOW (Purana Verified Logic) ---
+        if (type === 'P00_Human' || type === 'P00_Value') {
+            area.innerHTML = `
+                <div style="font-size: 3rem;">🚨</div>
+                <h2>${type === 'P00_Human' ? 'Human Safety' : 'Value Safety'}</h2>
+                <p>Owner ko emergency alert bhejne ke liye WhatsApp verify karein.</p>
+                <a href="https://wa.me/${d.WACompany}?text=Verify%20Alert%20for%20ID%20${cid}" 
+                   onclick="showStep2('${d.Email1}', '${d.Email2}', '${d.Person_Name}', '${d.Owner_PIN}')" target="_blank" class="btn btn-wa">
+                   Verify via WhatsApp
+                </a>
+                <div id="step2" class="hidden">
+                    <hr>
+                    <div class="label">Your Mobile Number (%)</div>
+                    <input type="number" id="scNo" placeholder="WhatsApp Number">
+                    <div class="label">Select/Write Problem (%)</div>
+                    <textarea id="scDk" rows="3" placeholder="Gadi lock hai / Shisha khula hai / Emergency..."></textarea>
+                    <button class="btn btn-red" onclick="finalSubmit('${d.Email1}', '${d.Email2}', '${cid}')">Final Submit (Email Alert)</button>
+                    ${type === 'P00_Human' ? `
+                        <hr>
+                        <p><b>Owner Login:</b> Enter PIN to see GPS</p>
+                        <input type="password" id="oPin" placeholder="Owner PIN">
+                        <button class="btn btn-blue" onclick="checkOwner('${d.Owner_PIN}')">Verify PIN</button>
+                        <div id="gpsView" class="hidden"><p>📍 Location: LIVE GPS ACTIVE</p></div>
+                    ` : ''}
                 </div>
-                <hr><p><b>Owner Only:</b> Enter PIN to see GPS/Message</p>
-                <input type="password" id="ownerPin" placeholder="Enter PIN">
-                <button class="btn" style="background:var(--blue)" onclick="checkOwner('${d.Owner_PIN}', 'gps')">VERIFY & VIEW</button>
-                <div id="gps-area" class="hidden"><h3>📍 Live GPS: 28.6139, 77.2090</h3><p>Custom Msg: I am safe now.</p></div>`;
+                <div class="warning-box">
+                    ⚠️ Sachet (Alert): Aapka number verification ke liye server par record ho chuka hai. Galat jankari dena apradh hai.
+                </div>`;
         }
         
-        // --- CATEGORY 2: VALUE SAFETY (No PIN) ---
-        else if(type === 'P00_Value') {
-            root.innerHTML = `<h2>🐾 Value Found</h2><p>This belongs to: <b>${d.Person_Name}</b></p>
-                <button class="btn" style="background:var(--green)" onclick="sendAlert('${d.Email1}', 'Found Item')">NOTIFY OWNER (WA)</button>
-                <input type="text" id="scNo" placeholder="Your Number (%)">
-                <input type="text" id="scDk" placeholder="Where did you find it? (%)">
-                <button class="btn" style="background:var(--blue)" onclick="submitLog('${d['Cust_ID(No.)']}')">SEND LOGBOOK ENTRY</button>`;
+        // --- CAT 3: SMART SERVICES (Direct Actions) ---
+        else if (type === 'P01_Pay') window.location.href = `upi://pay?pa=${d.UPI_ID}&pn=${d.Name}&cu=INR`;
+        else if (type === 'P03_Biz') {
+            area.innerHTML = `<h2>💼 Biz Card</h2><h3>${d.Name}</h3><p>${d.Job}</p>
+                <a href="tel:${d.Phone}" class="btn btn-blue">Call Now</a>
+                <button class="btn btn-wa" onclick="window.open('https://wa.me/${d.Phone}')">WhatsApp</button>
+                <p>Social: ${d.Social_Links}</p>`;
+        }
+        else if (type === 'P04_Review') window.location.href = d.Review_URL;
+        else if (type === 'P08_Resume') window.location.href = d.Drive_URL;
+        else if (type === 'P09_WiFi') {
+            area.innerHTML = `<h2>📶 WiFi</h2><p>SSID: ${d.SSID}</p><p>Password: ${d.Password}</p>
+                <button class="btn btn-blue" onclick="navigator.clipboard.writeText('${d.Password}');alert('Copied!')">Copy Password</button>`;
+        }
+        else if (type === 'P11_Challan') window.location.href = `https://echallan.parivahan.gov.in/index/accused-challan?vehno=${d.Vehicle_No}`;
+        else if (type === 'P12_Invite') {
+            area.innerHTML = `<h2>💌 Invite</h2><input type="password" id="iPin" placeholder="PIN"><button class="btn btn-blue" onclick="if(document.getElementById('iPin').value==='${d.PIN}'){alert('${d.Event_Name} on ${d.Date}')}else{alert('Wrong')}">Open</button>`;
         }
 
-        // --- CATEGORY 3: SMART SERVICES ---
-        else if(type === 'P01_Pay') window.location.href = `upi://pay?pa=${d.UPI_ID}&pn=${d.Name}&cu=INR`;
-        else if(type === 'P03_Biz') {
-            root.innerHTML = `<h2>📇 Digital Biz Card</h2><h3>${d.Name}</h3><p>${d.Job}</p>
-                <a href="tel:${d.Phone}" class="btn" style="background:var(--blue)">CALL NOW</a>
-                <button class="btn" style="background:var(--green)" onclick="alert('VCF Downloading...')">SAVE CONTACT</button>`;
-        }
-        else if(type === 'P04_Review') window.location.href = d.Review_URL;
-        else if(type === 'P08_Resume') window.location.href = d.Drive_URL;
-        else if(type === 'P09_WiFi') root.innerHTML = `<h2>📶 WiFi Connect</h2><p>SSID: ${d.SSID}</p><button class="btn" style="background:var(--green)" onclick="alert('Connecting...')">CONNECT NOW</button>`;
-        else if(type === 'P11_Challan') window.location.href = `https://echallan.parivahan.gov.in/index/accused-challan?vehno=${d.Vehicle_No}`;
-        else if(type === 'P12_Invite') {
-            root.innerHTML = `<h2>💌 Digital Invite</h2><p>Enter Secret PIN to View</p>
-                <input type="password" id="invPin" placeholder="Enter PIN">
-                <button class="btn" style="background:var(--blue)" onclick="checkOwner('${d.PIN}', 'invite', '${d.Event_Name}', '${d.Date}')">OPEN INVITE</button>
-                <div id="inv-area" class="hidden"></div>`;
-        }
-
-        // --- CATEGORY 4: DOC VAULT (Timer + Pass) ---
-        else if(type === 'P13_Doc') {
-            root.innerHTML = `<h2>📂 Doc Vault</h2><p>Vehicle: <b>${d.Gadi_Number}</b></p>
-                <div id="timer">20:00</div>
-                <button class="btn" style="background:var(--blue)" onclick="startTimer()">REQUEST FOLDER ACCESS</button>
-                <input type="password" id="pdfPass" placeholder="Enter PDF Password">
-                <button class="btn" style="background:var(--red)" onclick="window.open('${d.Drive_Link}')">OPEN DOCUMENT</button>`;
+        // --- CAT 4: DOC VAULT (Purana Timer + 20 Min) ---
+        else if (type === 'P13_Doc') {
+            area.innerHTML = `
+                <h2>📂 Doc Vault</h2>
+                <p>Vehicle: ${d.Gadi_Number}</p>
+                <div class="timer" id="timeLeft">20:00</div>
+                <button class="btn btn-blue" id="vBtn" onclick="startDocTimer('${d.Drive_Link}')">VIEW DOCUMENTS</button>
+                <div id="passArea" class="hidden">
+                    <input type="password" id="pdfP" placeholder="PDF Password">
+                    <p>Drive Request Sent to Owner!</p>
+                </div>`;
         }
     }
-
-    function sendAlert(num, msg) {
-        window.open(`https://wa.me/${num}?text=10haath_Alert!_Type:${msg}_ID:${cid}`);
+function showStep2() {
+        setTimeout(() => { document.getElementById('step2').classList.remove('hidden'); }, 2000);
     }
 
-    function submitLog(id) {
-        const no = document.getElementById('scNo').value;
-        const dk = document.getElementById('scDk').value;
-        if(!no || !dk) return alert("Fill details!");
-        
-        fetch(`${sheetdb_url}/Cust_ID(No.)/${id}?sheet=${type}`, {
+    function finalSubmit(e1, e2, id) {
+        const p = document.getElementById('scNo').value;
+        const r = document.getElementById('scDk').value;
+        if(p.length < 10) return alert("Sahi number dalein!");
+
+        // Update Log in Sheet
+        fetch(`${API_BASE}/Cust_ID(No.)/${id}?sheet=${type}`, {
             method: 'PATCH',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({"ScannerNo.": no, "Dikkat": dk, "Timestamp": new Date().toLocaleString()})
-        }).then(() => alert("Log Sent! Owner Notified via Email/WA."));
+            body: JSON.stringify({"ScannerNo.": p, "Dikkat": r})
+        });
+
+        // Purana Mailto Logic
+        let recipients = e1 + (e2 ? "," + e2 : "");
+        let subject = encodeURIComponent("🚨 10haath Alert: " + id);
+        let body = encodeURIComponent(`Namaste,\n\nAapki gadi/property ke sath dikkat hai: ${r}\nContact me: ${p}`);
+        window.location.href = `mailto:${recipients}?subject=${subject}&body=${body}`;
     }
 
-    function checkOwner(correctPin, mode, event, date) {
-        let input = (mode === 'gps') ? document.getElementById('ownerPin').value : document.getElementById('invPin').value;
-        if(input === correctPin) {
-            if(mode === 'gps') document.getElementById('gps-area').classList.remove('hidden');
-            else document.getElementById('main-content').innerHTML = `<h2>🎉 ${event}</h2><p>Date: ${date}</p><button class="btn" style="background:var(--green)">VIEW MAPS</button>`;
-        } else {
-            alert("Wrong PIN!");
-        }
-    }
-
-    function startTimer() {
-        alert("Access Request Sent to Owner!");
-        let time = 1200; 
-        const interval = setInterval(() => {
-            let mins = Math.floor(time / 60);
-            let secs = time % 60;
-            document.getElementById('timer').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-            if(time <= 0) clearInterval(interval);
-            time--;
+    function startDocTimer(link) {
+        document.getElementById('passArea').classList.remove('hidden');
+        document.getElementById('vBtn').innerText = "Opening Drive...";
+        setTimeout(() => { window.open(link); }, 1000);
+        
+        let sec = 1200; 
+        let timer = setInterval(() => {
+            sec--;
+            let mins = Math.floor(sec / 60);
+            let rs = sec % 60;
+            document.getElementById('timeLeft').innerText = mins + ":" + (rs < 10 ? "0" : "") + rs;
+            if(sec <= 0) { clearInterval(timer); document.body.innerHTML = "<h1>Expired!</h1>"; }
         }, 1000);
+    }
+
+    function checkOwner(correct) {
+        if(document.getElementById('oPin').value === correct) document.getElementById('gpsView').classList.remove('hidden');
+        else alert("Wrong PIN");
     }
 </script>
 </body>
