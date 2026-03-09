@@ -23,10 +23,10 @@
 <div class="card">
     <h2>🖐️ 10haath Master Dashboard</h2>
     <div class="grid" id="catGrid">
-        <button class="cat-btn cat1" onclick="openDirect('P00_Human')">CAT 1: HUMAN SAFETY<br>(SOS & GPS)</button>
-        <button class="cat-btn cat2" onclick="openDirect('P00_Value')">CAT 2: VALUE SAFETY<br>(Pet/Luggage/Vehicle)</button>
-        <button class="cat-btn cat3" onclick="loadSubCategory('cat3')">CAT 3: SMART SERVICES<br>(UPI/Biz/WiFi)</button>
-        <button class="cat-btn cat4" onclick="openDirect('P13_Doc')">CAT 4: DOC VAULT<br>(Vehicle Docs)</button>
+        <button class="cat-btn cat1" onclick="openDirect('P00_Human', 'Cat 1: Human Safety')">CAT 1: HUMAN SAFETY</button>
+        <button class="cat-btn cat2" onclick="openDirect('P00_Value', 'Cat 2: Value Safety')">CAT 2: VALUE SAFETY</button>
+        <button class="cat-btn cat3" onclick="loadCat3Menu()">CAT 3: SMART SERVICES</button>
+        <button class="cat-btn cat4" onclick="openDirect('P13_Doc', 'Cat 4: Doc Vault')">CAT 4: DOC VAULT</button>
     </div>
 
     <div id="formArea">
@@ -46,52 +46,53 @@
 <script>
     let currentSheet = "";
     
-    // Config as per your Google Sheet structure
-    const config = {
-        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Email1", "WACompany"],
-        "P00_Value": ["Person_Name", "Email1", "WACompany"],
-        "P13_Doc": ["Name", "Gadi_Number", "Drive_Link", "Drive_Password"],
-        "cat3": {
-            "P01_Pay": ["Name", "UPI_ID", "Amount"],
-            "P03_Biz": ["Name", "Job", "Phone", "Social_Links"],
-            "P09_WiFi": ["Name", "SSID", "Password"]
-        }
+    // Exact Protocol Mapping: Only # and $ fields are in Builder
+    const fieldConfig = {
+        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
+        "P00_Value": ["Person_Name", "Email1", "Email2", "WACompany"],
+        "P01_Pay": ["Name", "UPI_ID"],
+        "P03_Biz": ["Name", "Job", "Phone", "Social_Links"],
+        "P04_Review": ["Name", "Review_URL"],
+        "P08_Resume": ["Name", "Drive_URL"],
+        "P09_WiFi": ["Name", "SSID", "Password"],
+        "P11_Challan": ["Name", "Vehicle_No", "Engine_No", "Chassis_No"],
+        "P12_Invite": ["Name", "PIN", "Event_Name", "Date", "Maps_Link", "Video_Link"],
+        "P13_Doc": ["Name", "Gadi_Number", "Drive_Link", "Drive_Password", "Password_Free_PDF_Link"]
     };
 
-    function openDirect(sheet) {
+    function openDirect(sheet, title) {
         currentSheet = sheet;
         document.getElementById('catGrid').style.display = 'none';
         document.getElementById('formArea').style.display = 'block';
-        document.getElementById('catTitle').innerText = sheet.replace('P00_', '').replace('P13_', '') + " Registration";
-        renderFields(config[sheet]);
+        document.getElementById('catTitle').innerText = title;
+        document.getElementById('subSelectArea').innerHTML = "";
+        renderBuilderFields(fieldConfig[sheet]);
     }
 
-    function loadSubCategory() {
+    function loadCat3Menu() {
         document.getElementById('catGrid').style.display = 'none';
         document.getElementById('formArea').style.display = 'block';
-        document.getElementById('catTitle').innerText = "Select Smart Service";
+        document.getElementById('catTitle').innerText = "Category 3 Services";
         
-        let html = `<select id="subType" onchange="updateSubFields()">
+        let html = `<select id="subType" onchange="currentSheet=this.value; renderBuilderFields(fieldConfig[this.value])">
                         <option value="">-- Choose Service --</option>
-                        <option value="P01_Pay">UPI Payment QR</option>
-                        <option value="P03_Biz">Digital Biz Card</option>
-                        <option value="P09_WiFi">WiFi Auto-Connect</option>
+                        <option value="P01_Pay">P01 Pay</option>
+                        <option value="P03_Biz">P03 Biz</option>
+                        <option value="P04_Review">P04 Review</option>
+                        <option value="P08_Resume">P08 Resume</option>
+                        <option value="P09_WiFi">P09 WiFi</option>
+                        <option value="P11_Challan">P11 Challan</option>
+                        <option value="P12_Invite">P12 Invite</option>
                     </select>`;
         document.getElementById('subSelectArea').innerHTML = html;
+        document.getElementById('fieldsArea').innerHTML = "";
     }
 
-    function updateSubFields() {
-        const type = document.getElementById('subType').value;
-        if(!type) return;
-        currentSheet = type;
-        renderFields(config.cat3[type]);
-    }
-
-    function renderFields(fields) {
+    function renderBuilderFields(fields) {
         const area = document.getElementById('fieldsArea');
-        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Unique ID (Required)">`;
+        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Cust_ID ($)">`;
         fields.forEach(f => {
-            area.innerHTML += `<input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')}">`;
+            area.innerHTML += `<input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')} (#)">`;
         });
     }
 
@@ -99,7 +100,6 @@
         const cid = document.getElementById('Cust_ID').value;
         if(!cid || !currentSheet) return alert("Pehle ID aur fields bharo!");
 
-        // Live Link for GitHub Pages
         const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${cid}&type=${currentSheet}`;
         
         document.getElementById('qrResult').style.display = "block";
@@ -107,15 +107,15 @@
         new QRCode(document.getElementById("qrcode"), { text: scanUrl, width: 200, height: 200 });
         document.getElementById('qrIDLabel').innerText = "ID: " + cid;
 
+        // Automated Field (!): Timestamp added here
         let data = { "Timestamp": new Date().toLocaleString(), "Cust_ID(No.)": cid };
-        let fields = (config[currentSheet]) ? config[currentSheet] : config.cat3[currentSheet];
-        fields.forEach(f => { data[f] = document.getElementById(f).value; });
+        fieldConfig[currentSheet].forEach(f => { data[f] = document.getElementById(f).value; });
 
         fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${currentSheet}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
-        }).then(res => res.ok ? alert("Mubarak ho! Data " + currentSheet + " mein save ho gaya.") : alert("Sheet Error! Check Tab Names."));
+        }).then(res => res.ok ? alert("Data Saved in " + currentSheet) : alert("Sheet Error!"));
     }
 </script>
 </body>

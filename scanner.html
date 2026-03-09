@@ -2,120 +2,129 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <title>10haath Master Dashboard</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10haath Workflow Engine</title>
     <style>
-        :root { --red: #e63946; --blue: #1d3557; --gray: #f4f7f6; --green: #2a9d8f; --orange: #f4a261; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--gray); padding: 20px; }
-        .card { background: white; max-width: 650px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); margin: auto; text-align: center; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
-        .cat-btn { padding: 20px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px; }
-        .cat1 { background: var(--red); } .cat2 { background: var(--orange); } 
-        .cat3 { background: var(--green); } .cat4 { background: #457b9d; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .btn { background: var(--blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; }
-        #formArea { display: none; text-align: left; margin-top: 20px; }
-        #qrResult { display: none; margin-top: 30px; padding: 20px; border: 2px dashed var(--blue); border-radius: 15px; }
+        :root { --red: #e63946; --blue: #1d3557; --gray: #f4f7f6; --green: #2a9d8f; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--gray); padding: 20px; text-align: center; }
+        .box { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
+        .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 16px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        #timer { font-size: 24px; font-weight: bold; color: var(--red); margin: 15px 0; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-
-<div class="card">
-    <h2>🖐️ 10haath Master Dashboard</h2>
-    <div class="grid" id="catGrid">
-        <button class="cat-btn cat1" onclick="openDirect('P00_Human')">CAT 1: HUMAN SAFETY<br>(SOS & GPS)</button>
-        <button class="cat-btn cat2" onclick="openDirect('P00_Value')">CAT 2: VALUE SAFETY<br>(Pet/Luggage/Vehicle)</button>
-        <button class="cat-btn cat3" onclick="loadSubCategory('cat3')">CAT 3: SMART SERVICES<br>(UPI/Biz/WiFi/etc)</button>
-        <button class="cat-btn cat4" onclick="openDirect('P13_Doc')">CAT 4: DOC VAULT<br>(Vehicle Docs)</button>
+    <div class="box" id="main-content">
+        <h2>Loading 10haath Service...</h2>
     </div>
-
-    <div id="formArea">
-        <button onclick="location.reload()" style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold;">← Back</button>
-        <h3 id="catTitle" style="color:var(--blue); margin-bottom:15px;"></h3>
-        <div id="subSelectArea"></div>
-        <div id="fieldsArea"></div>
-        <button class="btn" onclick="generateAndSync()">CREATE QR & SYNC DATA</button>
-    </div>
-
-    <div id="qrResult">
-        <div id="qrcode" style="display: flex; justify-content: center;"></div>
-        <p id="qrIDLabel" style="font-weight:bold; color:var(--blue); margin-top:10px;"></p>
-    </div>
-</div>
 
 <script>
-    let currentSheet = "";
-    let currentServiceType = "";
+    const params = new URLSearchParams(window.location.search);
+    const cid = params.get('id');
+    const type = params.get('type');
+    const sheetdb_url = "https://sheetdb.io/api/v1/vpozwh7cptzc4";
 
-    const config = {
-        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
-        "P00_Value": ["Person_Name", "Email1", "Email2", "WACompany"],
-        "P13_Doc": ["Name", "Gadi_Number", "Drive_Link", "Drive_Password"],
-        "cat3": {
-            "P01_Pay": ["Name", "UPI_ID"],
-            "P03_Biz": ["Name", "Job", "Phone", "Social_Links"],
-            "P09_WiFi": ["Name", "SSID", "Password"]
-        }
-    };
-
-    function openDirect(sheet) {
-        currentSheet = sheet;
-        currentServiceType = sheet;
-        document.getElementById('catGrid').style.display = 'none';
-        document.getElementById('formArea').style.display = 'block';
-        document.getElementById('catTitle').innerText = sheet.replace('P00_', '').replace('P13_', '') + " Form";
-        renderFields(config[sheet]);
-    }
-
-    function loadSubCategory(catId) {
-        document.getElementById('catGrid').style.display = 'none';
-        document.getElementById('formArea').style.display = 'block';
-        document.getElementById('catTitle').innerText = "Select Smart Service";
-        
-        let html = `<select id="subType" onchange="updateSubFields()">
-                        <option value="">-- Select Service --</option>
-                        <option value="P01_Pay">UPI Pay</option>
-                        <option value="P03_Biz">Biz Card</option>
-                        <option value="P09_WiFi">WiFi Connect</option>
-                    </select>`;
-        document.getElementById('subSelectArea').innerHTML = html;
-    }
-
-    function updateSubFields() {
-        const type = document.getElementById('subType').value;
-        currentSheet = type; 
-        currentServiceType = type;
-        renderFields(config.cat3[type]);
-    }
-
-    function renderFields(fields) {
-        const area = document.getElementById('fieldsArea');
-        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Unique ID (Required)">`;
-        fields.forEach(f => {
-            area.innerHTML += `<input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')}">`;
+    if(cid && type) {
+        fetch(`${sheetdb_url}/search?Cust_ID(No.)=${cid}&sheet=${type}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.length > 0) startWorkflow(data[0]);
+            else document.getElementById('main-content').innerHTML = "<h2>Invalid QR Code</h2>";
         });
     }
 
-    function generateAndSync() {
-        const cid = document.getElementById('Cust_ID').value;
-        if(!cid || !currentSheet) return alert("Details bharo bhai!");
-
-        const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${cid}&type=${currentSheet}`;
+    function startWorkflow(d) {
+        let root = document.getElementById('main-content');
         
-        document.getElementById('qrResult').style.display = "block";
-        document.getElementById('qrcode').innerHTML = "";
-        new QRCode(document.getElementById("qrcode"), { text: scanUrl, width: 200, height: 200 });
-        document.getElementById('qrIDLabel').innerText = "ID: " + cid;
+        // --- CATEGORY 1: SOS (PIN + GPS) ---
+        if(type === 'P00_Human') {
+            root.innerHTML = `<h2>🆘 SOS Alert</h2><p>Owner: <b>${d.Person_Name}</b></p>
+                <button class="btn" style="background:var(--green)" onclick="sendAlert('${d.Emergency1}', 'SOS')">WHATSAPP FAMILY (Savior)</button>
+                <div id="savior-form">
+                    <input type="text" id="scNo" placeholder="Your Mobile (%)">
+                    <input type="text" id="scDk" placeholder="Problem/Dikkat (%)">
+                    <button class="btn" style="background:var(--red)" onclick="submitLog('${d['Cust_ID(No.)']}')">SEND EMERGENCY LOG</button>
+                </div>
+                <hr><p><b>Owner Only:</b> Enter PIN to see GPS/Message</p>
+                <input type="password" id="ownerPin" placeholder="Enter PIN">
+                <button class="btn" style="background:var(--blue)" onclick="checkOwner('${d.Owner_PIN}', 'gps')">VERIFY & VIEW</button>
+                <div id="gps-area" class="hidden"><h3>📍 Live GPS: 28.6139, 77.2090</h3><p>Custom Msg: I am safe now.</p></div>`;
+        }
+        
+        // --- CATEGORY 2: VALUE SAFETY (No PIN) ---
+        else if(type === 'P00_Value') {
+            root.innerHTML = `<h2>🐾 Value Found</h2><p>This belongs to: <b>${d.Person_Name}</b></p>
+                <button class="btn" style="background:var(--green)" onclick="sendAlert('${d.Email1}', 'Found Item')">NOTIFY OWNER (WA)</button>
+                <input type="text" id="scNo" placeholder="Your Number (%)">
+                <input type="text" id="scDk" placeholder="Where did you find it? (%)">
+                <button class="btn" style="background:var(--blue)" onclick="submitLog('${d['Cust_ID(No.)']}')">SEND LOGBOOK ENTRY</button>`;
+        }
 
-        let data = { "Timestamp": new Date().toLocaleString(), "Cust_ID(No.)": cid };
-        let fields = (config[currentSheet]) ? config[currentSheet] : config.cat3[currentSheet];
-        fields.forEach(f => { data[f] = document.getElementById(f).value; });
+        // --- CATEGORY 3: SMART SERVICES ---
+        else if(type === 'P01_Pay') window.location.href = `upi://pay?pa=${d.UPI_ID}&pn=${d.Name}&cu=INR`;
+        else if(type === 'P03_Biz') {
+            root.innerHTML = `<h2>📇 Digital Biz Card</h2><h3>${d.Name}</h3><p>${d.Job}</p>
+                <a href="tel:${d.Phone}" class="btn" style="background:var(--blue)">CALL NOW</a>
+                <button class="btn" style="background:var(--green)" onclick="alert('VCF Downloading...')">SAVE CONTACT</button>`;
+        }
+        else if(type === 'P04_Review') window.location.href = d.Review_URL;
+        else if(type === 'P08_Resume') window.location.href = d.Drive_URL;
+        else if(type === 'P09_WiFi') root.innerHTML = `<h2>📶 WiFi Connect</h2><p>SSID: ${d.SSID}</p><button class="btn" style="background:var(--green)" onclick="alert('Connecting...')">CONNECT NOW</button>`;
+        else if(type === 'P11_Challan') window.location.href = `https://echallan.parivahan.gov.in/index/accused-challan?vehno=${d.Vehicle_No}`;
+        else if(type === 'P12_Invite') {
+            root.innerHTML = `<h2>💌 Digital Invite</h2><p>Enter Secret PIN to View</p>
+                <input type="password" id="invPin" placeholder="Enter PIN">
+                <button class="btn" style="background:var(--blue)" onclick="checkOwner('${d.PIN}', 'invite', '${d.Event_Name}', '${d.Date}')">OPEN INVITE</button>
+                <div id="inv-area" class="hidden"></div>`;
+        }
 
-        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${currentSheet}`, {
-            method: 'POST',
+        // --- CATEGORY 4: DOC VAULT (Timer + Pass) ---
+        else if(type === 'P13_Doc') {
+            root.innerHTML = `<h2>📂 Doc Vault</h2><p>Vehicle: <b>${d.Gadi_Number}</b></p>
+                <div id="timer">20:00</div>
+                <button class="btn" style="background:var(--blue)" onclick="startTimer()">REQUEST FOLDER ACCESS</button>
+                <input type="password" id="pdfPass" placeholder="Enter PDF Password">
+                <button class="btn" style="background:var(--red)" onclick="window.open('${d.Drive_Link}')">OPEN DOCUMENT</button>`;
+        }
+    }
+
+    function sendAlert(num, msg) {
+        window.open(`https://wa.me/${num}?text=10haath_Alert!_Type:${msg}_ID:${cid}`);
+    }
+
+    function submitLog(id) {
+        const no = document.getElementById('scNo').value;
+        const dk = document.getElementById('scDk').value;
+        if(!no || !dk) return alert("Fill details!");
+        
+        fetch(`${sheetdb_url}/Cust_ID(No.)/${id}?sheet=${type}`, {
+            method: 'PATCH',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        }).then(res => res.ok ? alert("Success! Data synced to " + currentSheet) : alert("Sheet Error! Check Tab Name."));
+            body: JSON.stringify({"ScannerNo.": no, "Dikkat": dk, "Timestamp": new Date().toLocaleString()})
+        }).then(() => alert("Log Sent! Owner Notified via Email/WA."));
+    }
+
+    function checkOwner(correctPin, mode, event, date) {
+        let input = (mode === 'gps') ? document.getElementById('ownerPin').value : document.getElementById('invPin').value;
+        if(input === correctPin) {
+            if(mode === 'gps') document.getElementById('gps-area').classList.remove('hidden');
+            else document.getElementById('main-content').innerHTML = `<h2>🎉 ${event}</h2><p>Date: ${date}</p><button class="btn" style="background:var(--green)">VIEW MAPS</button>`;
+        } else {
+            alert("Wrong PIN!");
+        }
+    }
+
+    function startTimer() {
+        alert("Access Request Sent to Owner!");
+        let time = 1200; 
+        const interval = setInterval(() => {
+            let mins = Math.floor(time / 60);
+            let secs = time % 60;
+            document.getElementById('timer').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            if(time <= 0) clearInterval(interval);
+            time--;
+        }, 1000);
     }
 </script>
 </body>
