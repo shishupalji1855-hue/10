@@ -90,36 +90,46 @@
 function generateAndSync() {
     const type = document.getElementById('srvType').value;
     const cid = document.getElementById('Cust_ID').value;
+    const fields = config[type];
+    
     if(!type || !cid) return alert("Bhai, Details toh bhar do!");
 
-    // Aapki Netlify URL (Scanner link ke liye)
-    const scanUrl = `https://voluble-smakager-83f839.netlify.app/scanner.html?id=${cid}&type=${type}`;
+    // FIXED: Ab QR code aapke LIVE GitHub link ka banega (Netlify band ho chuka hai)
+    const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${cid}&type=${type}`;
     
     document.getElementById('qrResult').style.display = "block";
     document.getElementById('qrcode').innerHTML = "";
     new QRCode(document.getElementById("qrcode"), { text: scanUrl, width: 200, height: 200 });
     document.getElementById('qrIDLabel').innerText = "ID: " + cid;
 
-    // Sahi Sheet Tab mapping (Jo aapne photo mein dikhayi hai)
+    // FIXED: Aapke naye Tab Names (P00_Human & P00_Value)
     let sheetName = type;
     if(['P02_Kid','P05_Women','P06_Senior'].includes(type)) sheetName = "P00_Human";
     if(['P07_Pet','P10_Luggage','P14_Vehicle'].includes(type)) sheetName = "P00_Value";
 
-    // Data object taiyar karna
-    let data = { "Cust_ID(No.)": cid, "type": type, "Timestamp": new Date().toLocaleString() };
-    config[type].forEach(f => { data[f] = document.getElementById(f).value; });
+    // Data object taiyar karna (Exact Sheet Column names ke saath)
+    let data = { 
+        "Timestamp": new Date().toLocaleString(),
+        "Cust_ID(No.)": cid, 
+        "type": type 
+    };
+    
+    // Baaki fields ko data mein add karna
+    fields.forEach(f => { 
+        data[f] = document.getElementById(f).value; 
+    });
 
-    // SheetDB API Call
+    // SheetDB API Call - Iske bina Google Sheet mein data nahi jayega
     fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${sheetName}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(data)
     })
     .then(res => {
-        if(res.ok) alert("Data Saved Successfully in " + sheetName);
-        else alert("SheetDB Error! Check Tab Name.");
+        if(res.ok) alert("Data Saved Successfully in Tab: " + sheetName);
+        else alert("SheetDB Error! Check if Tab '" + sheetName + "' exists in Sheet.");
     })
-    .catch(err => alert("Connection Error!"));
+    .catch(err => alert("Connection Error! Check Internet."));
 }
 </script>
 </body>

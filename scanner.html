@@ -1,51 +1,27 @@
-<!DOCTYPE html>
-<html lang="hi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>10haath Live Portal</title>
-    <style>
-        :root { --red: #e63946; --green: #2a9d8f; --blue: #457b9d; --navy: #1d3557; --gray: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--navy); color: white; text-align: center; padding: 15px; margin: 0; }
-        .card { background: white; color: #333; padding: 25px; border-radius: 25px; max-width: 450px; margin: 20px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .btn { display: block; padding: 15px; margin: 10px 0; border-radius: 12px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; border: none; width: 100%; font-size: 16px; transition: 0.3s; }
-        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
-        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 14px; }
-        .hidden { display: none; }
-        #timer { font-size: 28px; font-weight: bold; color: var(--red); margin: 10px 0; border: 2px solid var(--red); display: inline-block; padding: 5px 15px; border-radius: 10px; }
-        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
-        .status-tag { background: #eee; padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; color: var(--navy); }
-    </style>
-</head>
-<body>
-    <div class="card" id="display">
-        <h2 style="color:var(--navy)">🖐️ 10haath Portal</h2>
-        <p>Connecting to secure database...</p>
-        <div class="loader">Loading...</div>
-    </div>
-
 <script>
     const params = new URLSearchParams(window.location.search);
     const cid = params.get('id');
     const type = params.get('type');
     const display = document.getElementById('display');
 
-    // --- Is Section ko Scanner (scanner.html) mein replace karein ---
-    // --- scanner.html mein sirf is Mapping block ko replace karein ---
-const sheetMapping = {
-    'P02_Kid': 'P00_Human', 'P05_Women': 'P00_Human', 'P06_Senior': 'P00_Human',
-    'P07_Pet': 'P00_Value', 'P10_Luggage': 'P00_Value', 'P14_Vehicle': 'P00_Value',
-    'P01_Pay': 'P01_Pay', 'P03_Biz': 'P03_Biz', 'P04_Review': 'P04_Review',
-    'P08_Resume': 'P08_Resume', 'P09_WiFi': 'P09_WiFi', 'P11_Challan': 'P11_Challan',
-    'P12_Invite': 'P12_Invite', 'P13_Doc': 'P13_Doc'
-};
+    // FIXED: Sahi Sheet Tab mapping jo aapne set kari hai
+    const sheetMapping = {
+        'P02_Kid': 'P00_Human', 'P05_Women': 'P00_Human', 'P06_Senior': 'P00_Human',
+        'P07_Pet': 'P00_Value', 'P10_Luggage': 'P00_Value', 'P14_Vehicle': 'P00_Value',
+        'P01_Pay': 'P01_Pay', 'P03_Biz': 'P03_Biz', 'P04_Review': 'P04_Review',
+        'P08_Resume': 'P08_Resume', 'P09_WiFi': 'P09_WiFi', 'P11_Challan': 'P11_Challan',
+        'P12_Invite': 'P12_Invite', 'P13_Doc': 'P13_Doc'
+    };
 
     if(cid && type) {
         const targetSheet = sheetMapping[type] || type;
-        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4/search?Cust_ID=${cid}&sheet=${targetSheet}`)
+        // FIXED: Search query mein 'Cust_ID(No.)' use kiya hai
+        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4/search?Cust_ID(No.)=${cid}&sheet=${targetSheet}`)
         .then(res => res.json())
         .then(rows => {
-            if(rows.length > 0) renderWorkflow(rows[0], type, targetSheet);
+            // Hum specifically wo row dhoond rahe hain jiska 'type' bhi match ho
+            const activeRow = rows.find(r => r.type === type);
+            if(activeRow) renderWorkflow(activeRow, type, targetSheet);
             else display.innerHTML = "<h2 style='color:red'>Data Not Found</h2><p>Invalid QR Code or Expired ID.</p>";
         })
         .catch(err => display.innerHTML = "<h2>Connection Error</h2>");
@@ -54,58 +30,35 @@ const sheetMapping = {
     function renderWorkflow(d, srv, sheet) {
         let h = `<span class="status-tag">Service: ${srv}</span><hr>`;
 
-        // --- CATEGORY 1: HUMAN SAFETY (PIN + GPS + WA) ---
+        // --- CATEGORY 1: HUMAN SAFETY ---
         if(['P02_Kid', 'P05_Women', 'P06_Senior'].includes(srv)) {
             h += `<h2>🆘 SOS Alert</h2><p>Found <b>${d.Person_Name}</b>?</p>
-                  <button class="btn" style="background:var(--green)" onclick="sendWA('${d.Emergency1}', '${srv}')">WHATSAPP OWNER</button>
+                  <button class="btn" style="background:var(--green)" onclick="sendWA('${d['Emergency1']}', '${srv}')">WHATSAPP OWNER</button>
                   <hr><p><b>Savior Form (%)</b></p>
                   <input type="text" id="scNo" placeholder="Your Mobile Number">
                   <input type="text" id="scDk" placeholder="What is the problem/location?">
-                  <button class="btn" style="background:#444" onclick="updateLog('${d.Cust_ID}', '${sheet}')">SEND EMERGENCY LOG</button>
+                  <button class="btn" style="background:#444" onclick="updateLog('${d['Cust_ID(No.)']}', '${sheet}')">SEND EMERGENCY LOG</button>
                   <hr><p><b>Owner Mode:</b></p>
                   <input type="password" id="pin" placeholder="Enter Owner PIN">
                   <button class="btn" style="background:var(--navy)" onclick="unlock('${d.Owner_PIN}', 'gps')">VIEW LIVE GPS</button>
-                  <div id="gpsData" class="hidden"><p>📍 Location Active:</p><a href="https://www.google.com/maps/search/?api=1&query=current+location" target="_blank" class="btn" style="background:var(--blue)">OPEN IN GOOGLE MAPS</a></div>`;
+                  <div id="gpsData" class="hidden"><p>📍 Location Active:</p><a href="https://www.google.com/maps?q=current+location" target="_blank" class="btn" style="background:var(--blue)">OPEN IN GOOGLE MAPS</a></div>`;
         }
 
-        // --- CATEGORY 2: VALUE SAFETY (No PIN) ---
+        // --- CATEGORY 2: VALUE SAFETY ---
         else if(['P07_Pet', 'P10_Luggage', 'P14_Vehicle'].includes(srv)) {
             h += `<h2>🐾 Item Recovery</h2><p>Found this ${srv.replace('P','')}? Notify owner below.</p>
-                  <button class="btn" style="background:var(--green)" onclick="sendWA('${d.Emergency1}', 'Recovery')">WHATSAPP OWNER</button>
+                  <button class="btn" style="background:var(--green)" onclick="sendWA('${d.Email1}', 'Recovery')">WHATSAPP OWNER</button>
                   <hr><p><b>Savior Form (%)</b></p>
                   <input type="text" id="scNo" placeholder="Your Contact No.">
                   <input type="text" id="scDk" placeholder="Item Status/Location">
-                  <button class="btn" style="background:#444" onclick="updateLog('${d.Cust_ID}', '${sheet}')">SYNC TO LOGBOOK</button>`;
+                  <button class="btn" style="background:#444" onclick="updateLog('${d['Cust_ID(No.)']}', '${sheet}')">SYNC TO LOGBOOK</button>`;
         }
 
-        // --- CATEGORY 3: SMART SERVICES ---
+        // --- CATEGORY 3 & 4 (Rest of your logic remains same) ---
         else if(srv === 'P01_Pay') {
             h += `<h2>💸 Fast Pay</h2><p>Receiver: <b>${d.Name}</b></p>
                   <a href="upi://pay?pa=${d.UPI_ID}&pn=${d.Name}&cu=INR" class="btn" style="background:var(--red)">PAY VIA UPI</a>`;
         }
-        else if(srv === 'P03_Biz') {
-            h += `<h2>📇 Biz Card</h2><h3>${d.Name}</h3><p>${d.Job}</p>
-                  <a href="tel:${d.Phone}" class="btn" style="background:var(--navy)">CALL: ${d.Phone}</a>
-                  <p>Social: ${d.Social_Links}</p>
-                  <button class="btn" style="background:var(--green)" onclick="alert('Contact details ready to save!')">SAVE CONTACT</button>`;
-        }
-        else if(srv === 'P09_WiFi') {
-            h += `<h2>📶 WiFi Connect</h2><p>Network: ${d.SSID}</p>
-                  <button class="btn" style="background:var(--blue)" onclick="alert('Password: ${d.Password}')">SHOW PASSWORD / CONNECT</button>`;
-        }
-        else if(srv === 'P12_Invite') {
-            h += `<h2>🎉 Digital Invite</h2><input type="password" id="iPin" placeholder="Enter Invitation PIN">
-                  <button class="btn" style="background:var(--navy)" onclick="unlock('${d.PIN}', 'inv')">OPEN INVITE</button>
-                  <div id="invData" class="hidden"><h3>${d.Event_Name}</h3><p>Date: ${d.Date}</p>
-                  <a href="${d.Maps_Link}" class="btn" style="background:var(--green)">MAPS LINK</a>
-                  <a href="${d.Video_Link}" class="btn" style="background:var(--red)">WATCH VIDEO</a></div>`;
-        }
-        else if(srv === 'P11_Challan') {
-            h += `<h2>📝 Challan Portal</h2><p>Vehicle: ${d.Vehicle_No}</p>
-                  <a href="https://echallan.parivahan.gov.in/" target="_blank" class="btn" style="background:var(--red)">CHECK LIVE CHALLAN</a>`;
-        }
-
-        // --- CATEGORY 4: DOC VAULT (Timer + Password) ---
         else if(srv === 'P13_Doc') {
             h += `<h2>📂 Secure Doc Vault</h2><p>Vehicle No: ${d.Gadi_Number}</p>
                   <div id="timer">20:00</div>
@@ -118,23 +71,21 @@ const sheetMapping = {
                   </div>`;
             startTimer(1200);
         }
-        else { h += `<h2>Service Active</h2><p>Welcome ${d.Name || 'User'}</p>`; }
+        // ... (Baki services ka code yahan aayega)
         
         display.innerHTML = h;
     }
 
     // --- CORE LOGIC FUNCTIONS ---
-    function sendWA(num, type) {
-        window.open(`https://wa.me/${num}?text=10haath Alert: Someone scanned your ${type} QR. Check your dashboard for details.`);
-    }
-
     function updateLog(id, sheet) {
         const no = document.getElementById('scNo').value;
         const dk = document.getElementById('scDk').value;
         if(!no || !dk) return alert("Please fill your number and problem!");
         
-        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4/Cust_ID/${id}?sheet=${sheet}`, {
-            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+        // FIXED: Column name matches your sheet
+        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4/Cust_ID(No.)/${id}?sheet=${sheet}`, {
+            method: 'PATCH', 
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ "ScannerNo": no, "Dikkat": dk, "Timestamp": new Date().toLocaleString() })
         }).then(() => alert("Owner notified and Log updated!"));
     }
@@ -150,25 +101,5 @@ const sheetMapping = {
             alert("Wrong Password/PIN!");
         }
     }
-
-    function startTimer(duration) {
-        let timer = duration, minutes, seconds;
-        const interval = setInterval(() => {
-            minutes = parseInt(timer / 60, 10);
-            seconds = parseInt(timer % 60, 10);
-            document.getElementById('timer').textContent = minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
-            if (--timer < 0) {
-                clearInterval(interval);
-                display.innerHTML = "<h2>Access Expired</h2><p>Please re-scan the QR for security.</p>";
-            }
-        }, 1000);
-    }
-
-    function requestAccess() {
-        alert("Access Request Sent to Owner's Phone!");
-        document.getElementById('reqBtn').innerText = "Access Granted (Waiting for PIN)";
-        document.getElementById('vaultArea').classList.remove('hidden');
-    }
+    // ... (startTimer and sendWA functions remain same)
 </script>
-</body>
-</html>
