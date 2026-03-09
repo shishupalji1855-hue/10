@@ -31,116 +31,103 @@
     const API_BASE = "https://sheetdb.io/api/v1/vpozwh7cptzc4";
 
     if (cid && type) {
-        fetch(`${API_BASE}/search?Cust_ID(No.)=${cid}&sheet=${type}`)
+        const col = encodeURIComponent("Cust_ID(No.)");
+        const val = encodeURIComponent(cid);
+        const sheet = encodeURIComponent(type);
+        const searchUrl = `${API_BASE}/search?${col}=${val}&sheet=${sheet}`;
+
+        fetch(searchUrl)
         .then(res => res.json())
         .then(data => {
-            if (data && data.length > 0) startApp(data[0]);
-            else document.getElementById('status').innerText = "Data Not Found!";
+            if (data && data.length > 0) {
+                startApp(data[0]);
+            } else {
+                // FALLBACK: Agar bracket ki wajah se search fail ho, toh manual filter karein
+                console.log("Fallback Search Triggered...");
+                fetch(`${API_BASE}?sheet=${sheet}`)
+                .then(r => r.json())
+                .then(allData => {
+                    const row = allData.find(r => r["Cust_ID(No.)"] == cid);
+                    if (row) startApp(row);
+                    else showNoData();
+                });
+            }
         })
-        .catch(err => document.getElementById('status').innerText = "Network Error!");
+        .catch(err => { document.getElementById('status').innerText = "Network Error!"; });
     }
 
-    function startApp(d) {
+    function showNoData() {
+        document.getElementById('status').innerHTML = `<div style="color:red;">ID <b>${cid}</b> Not Found in <b>${type}</b></div>`;
+    }
+function startApp(d) {
         document.getElementById('status').classList.add('hidden');
         const area = document.getElementById('workflow-area');
 
-        // --- CAT 1 & 2: SAFETY FLOW (Purana Verified Logic) ---
+        // CATEGORY 1 & 2
         if (type === 'P00_Human' || type === 'P00_Value') {
             area.innerHTML = `
                 <div style="font-size: 3rem;">🚨</div>
                 <h2>${type === 'P00_Human' ? 'Human Safety' : 'Value Safety'}</h2>
-                <p>Owner ko emergency alert bhejne ke liye WhatsApp verify karein.</p>
-                <a href="https://wa.me/${d.WACompany}?text=Verify%20Alert%20for%20ID%20${cid}" 
-                   onclick="showStep2('${d.Email1}', '${d.Email2}', '${d.Person_Name}', '${d.Owner_PIN}')" target="_blank" class="btn btn-wa">
-                   Verify via WhatsApp
-                </a>
+                <p>Owner ko alert bhejne ke liye WhatsApp verify karein.</p>
+                <a href="https://wa.me/${d.WACompany}?text=Verify_Alert_ID_${cid}" 
+                   onclick="showStep2()" target="_blank" class="btn btn-wa">Verify via WhatsApp</a>
                 <div id="step2" class="hidden">
-                    <hr>
-                    <div class="label">Your Mobile Number (%)</div>
-                    <input type="number" id="scNo" placeholder="WhatsApp Number">
-                    <div class="label">Select/Write Problem (%)</div>
-                    <textarea id="scDk" rows="3" placeholder="Gadi lock hai / Shisha khula hai / Emergency..."></textarea>
-                    <button class="btn btn-red" onclick="finalSubmit('${d.Email1}', '${d.Email2}', '${cid}')">Final Submit (Email Alert)</button>
+                    <hr><div class="label">Your Number</div><input type="number" id="scNo">
+                    <div class="label">Problem</div><textarea id="scDk" rows="2"></textarea>
+                    <button class="btn btn-red" onclick="finalSubmit('${d.Email1}','${d.Email2}','${cid}')">Final Submit (Email)</button>
                     ${type === 'P00_Human' ? `
-                        <hr>
-                        <p><b>Owner Login:</b> Enter PIN to see GPS</p>
-                        <input type="password" id="oPin" placeholder="Owner PIN">
-                        <button class="btn btn-blue" onclick="checkOwner('${d.Owner_PIN}')">Verify PIN</button>
-                        <div id="gpsView" class="hidden"><p>📍 Location: LIVE GPS ACTIVE</p></div>
+                        <hr><p><b>Owner:</b> Enter PIN for GPS</p>
+                        <input type="password" id="oPin"><button class="btn btn-blue" onclick="checkOwner('${d.Owner_PIN}')">Verify</button>
+                        <div id="gpsView" class="hidden"><p>📍 GPS LIVE ACTIVE</p></div>
                     ` : ''}
                 </div>
-                <div class="warning-box">
-                    ⚠️ Sachet (Alert): Aapka number verification ke liye server par record ho chuka hai. Galat jankari dena apradh hai.
-                </div>`;
+                <div class="warning-box">⚠️ Server records your verification number.</div>`;
         }
-        
-        // --- CAT 3: SMART SERVICES (Direct Actions) ---
+        // CATEGORY 3
         else if (type === 'P01_Pay') window.location.href = `upi://pay?pa=${d.UPI_ID}&pn=${d.Name}&cu=INR`;
         else if (type === 'P03_Biz') {
-            area.innerHTML = `<h2>💼 Biz Card</h2><h3>${d.Name}</h3><p>${d.Job}</p>
-                <a href="tel:${d.Phone}" class="btn btn-blue">Call Now</a>
-                <button class="btn btn-wa" onclick="window.open('https://wa.me/${d.Phone}')">WhatsApp</button>
-                <p>Social: ${d.Social_Links}</p>`;
+            area.innerHTML = `<h2>💼 Biz Card</h2><h3>${d.Name}</h3><a href="tel:${d.Phone}" class="btn btn-blue">Call</a>Social: ${d.Social_Links}`;
         }
         else if (type === 'P04_Review') window.location.href = d.Review_URL;
         else if (type === 'P08_Resume') window.location.href = d.Drive_URL;
         else if (type === 'P09_WiFi') {
-            area.innerHTML = `<h2>📶 WiFi</h2><p>SSID: ${d.SSID}</p><p>Password: ${d.Password}</p>
-                <button class="btn btn-blue" onclick="navigator.clipboard.writeText('${d.Password}');alert('Copied!')">Copy Password</button>`;
+            area.innerHTML = `<h2>📶 WiFi</h2><p>SSID: ${d.SSID}</p><button class="btn btn-blue" onclick="navigator.clipboard.writeText('${d.Password}');alert('Copied!')">Copy Pass</button>`;
         }
         else if (type === 'P11_Challan') window.location.href = `https://echallan.parivahan.gov.in/index/accused-challan?vehno=${d.Vehicle_No}`;
         else if (type === 'P12_Invite') {
-            area.innerHTML = `<h2>💌 Invite</h2><input type="password" id="iPin" placeholder="PIN"><button class="btn btn-blue" onclick="if(document.getElementById('iPin').value==='${d.PIN}'){alert('${d.Event_Name} on ${d.Date}')}else{alert('Wrong')}">Open</button>`;
+            area.innerHTML = `<h2>💌 Invite</h2><input type="password" id="iPin"><button class="btn btn-blue" onclick="if(document.getElementById('iPin').value==='${d.PIN}'){alert('${d.Event_Name}')}else{alert('Wrong')}">Open</button>`;
         }
-
-        // --- CAT 4: DOC VAULT (Purana Timer + 20 Min) ---
+        // CATEGORY 4
         else if (type === 'P13_Doc') {
-            area.innerHTML = `
-                <h2>📂 Doc Vault</h2>
-                <p>Vehicle: ${d.Gadi_Number}</p>
-                <div class="timer" id="timeLeft">20:00</div>
+            area.innerHTML = `<h2>📂 Doc Vault</h2><p>Vehicle: ${d.Gadi_Number}</p><div class="timer" id="timeLeft">20:00</div>
                 <button class="btn btn-blue" id="vBtn" onclick="startDocTimer('${d.Drive_Link}')">VIEW DOCUMENTS</button>
-                <div id="passArea" class="hidden">
-                    <input type="password" id="pdfP" placeholder="PDF Password">
-                    <p>Drive Request Sent to Owner!</p>
-                </div>`;
+                <div id="passArea" class="hidden"><input type="password" id="pdfP" placeholder="PDF Password"></div>`;
         }
     }
-function showStep2() {
-        setTimeout(() => { document.getElementById('step2').classList.remove('hidden'); }, 2000);
-    }
+function showStep2() { setTimeout(() => { document.getElementById('step2').classList.remove('hidden'); }, 2000); }
 
     function finalSubmit(e1, e2, id) {
         const p = document.getElementById('scNo').value;
         const r = document.getElementById('scDk').value;
-        if(p.length < 10) return alert("Sahi number dalein!");
-
-        // Update Log in Sheet
+        if(p.length < 10) return alert("Sahi number!");
+        
         fetch(`${API_BASE}/Cust_ID(No.)/${id}?sheet=${type}`, {
-            method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({"ScannerNo.": p, "Dikkat": r})
         });
 
-        // Purana Mailto Logic
         let recipients = e1 + (e2 ? "," + e2 : "");
-        let subject = encodeURIComponent("🚨 10haath Alert: " + id);
-        let body = encodeURIComponent(`Namaste,\n\nAapki gadi/property ke sath dikkat hai: ${r}\nContact me: ${p}`);
-        window.location.href = `mailto:${recipients}?subject=${subject}&body=${body}`;
+        window.location.href = `mailto:${recipients}?subject=Alert_${id}&body=${r}%20Contact:${p}`;
     }
 
     function startDocTimer(link) {
         document.getElementById('passArea').classList.remove('hidden');
-        document.getElementById('vBtn').innerText = "Opening Drive...";
-        setTimeout(() => { window.open(link); }, 1000);
-        
+        window.open(link);
         let sec = 1200; 
-        let timer = setInterval(() => {
-            sec--;
-            let mins = Math.floor(sec / 60);
-            let rs = sec % 60;
-            document.getElementById('timeLeft').innerText = mins + ":" + (rs < 10 ? "0" : "") + rs;
-            if(sec <= 0) { clearInterval(timer); document.body.innerHTML = "<h1>Expired!</h1>"; }
+        setInterval(() => {
+            sec--; let m = Math.floor(sec/60); let s = sec%60;
+            document.getElementById('timeLeft').innerText = m + ":" + (s<10?"0":"") + s;
+            if(sec<=0) { document.body.innerHTML = "<h1>Expired!</h1>"; }
         }, 1000);
     }
 
