@@ -5,13 +5,14 @@
     <title>10haath Master Builder</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --red: #e63946; --blue: #1d3557; --gray: #f4f7f6; --green: #2a9d8f; }
+        :root { --red: #e63946; --blue: #1d3557; --gray: #f4f7f6; --green: #2a9d8f; --orange: #f4a261; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--gray); padding: 20px; }
         .card { background: white; max-width: 650px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); margin: auto; text-align: center; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
-        .cat-btn { padding: 15px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .cat1 { background: var(--red); } .cat2 { background: #f4a261; } .cat3 { background: var(--green); } .cat4 { background: #457b9d; }
-        select, input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .cat-btn { padding: 20px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px; }
+        .cat1 { background: var(--red); } .cat2 { background: var(--orange); } 
+        .cat3 { background: var(--green); } .cat4 { background: #457b9d; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         .btn { background: var(--blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; }
         #formArea { display: none; text-align: left; margin-top: 20px; }
         #qrResult { display: none; margin-top: 30px; padding: 20px; border: 2px dashed var(--blue); border-radius: 15px; }
@@ -22,16 +23,15 @@
 <div class="card">
     <h2>🖐️ 10haath Master Dashboard</h2>
     <div class="grid" id="catGrid">
-        <button class="cat-btn cat1" onclick="loadCategory('cat1')">CAT 1: HUMAN SAFETY<br>(SOS & GPS)</button>
-        <button class="cat-btn cat2" onclick="loadCategory('cat2')">CAT 2: VALUE SAFETY<br>(Pet/Luggage/Vehicle)</button>
-        <button class="cat-btn cat3" onclick="loadCategory('cat3')">CAT 3: SMART SERVICES<br>(UPI/Biz/WiFi/etc)</button>
-        <button class="cat-btn cat4" onclick="loadCategory('cat4')">CAT 4: DOC VAULT<br>(Vehicle Docs)</button>
+        <button class="cat-btn cat1" onclick="openDirect('P00_Human')">CAT 1: HUMAN SAFETY<br>(SOS & GPS)</button>
+        <button class="cat-btn cat2" onclick="openDirect('P00_Value')">CAT 2: VALUE SAFETY<br>(Pet/Luggage/Vehicle)</button>
+        <button class="cat-btn cat3" onclick="alert('Bhai, abhi CAT 1 aur 2 test karo!')">CAT 3: SMART SERVICES</button>
+        <button class="cat-btn cat4" onclick="alert('Coming Soon!')">CAT 4: DOC VAULT</button>
     </div>
 
     <div id="formArea">
         <button onclick="location.reload()" style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold;">← Back</button>
-        <h3 id="catTitle" style="color:var(--blue);"></h3>
-        <select id="srvType" onchange="renderFields()"></select>
+        <h3 id="catTitle" style="color:var(--blue); margin-bottom:15px;"></h3>
         <div id="fieldsArea"></div>
         <button class="btn" onclick="generateAndSync()">CREATE QR & SYNC DATA</button>
     </div>
@@ -43,94 +43,54 @@
 </div>
 
 <script>
-    const categories = {
-        cat1: { title: "Human Safety (SOS)", services: { "P02_Kid": "Kid Safety", "P05_Women": "Women Safety", "P06_Senior": "Senior Safety" } },
-        cat2: { title: "Value Safety (Recovery)", services: { "P07_Pet": "Pet ID", "P10_Luggage": "Luggage Tag", "P14_Vehicle": "Vehicle Recovery" } },
-        cat3: { title: "Smart Services", services: { "P01_Pay": "UPI Pay", "P03_Biz": "Biz Card", "P04_Review": "G-Review", "P08_Resume": "Resume Drive", "P09_WiFi": "WiFi Connect", "P11_Challan": "Vehicle Challan", "P12_Invite": "Digital Invite" } },
-        cat4: { title: "Document Vault", services: { "P13_Doc": "Vehicle Doc Vault" } }
+    let currentType = "";
+    // Photo Audit: Column names exact match as per your Google Sheet
+    const fieldConfig = {
+        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
+        "P00_Value": ["Person_Name", "Email1", "Email2", "WACompany"]
     };
 
-    const config = {
-        "P02_Kid": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
-        "P05_Women": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
-        "P06_Senior": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
-        "P07_Pet": ["Person_Name", "Email1", "Email2", "WACompany"],
-        "P10_Luggage": ["Person_Name", "Email1", "Email2", "WACompany"],
-        "P14_Vehicle": ["Person_Name", "Email1", "Email2", "WACompany"],
-        "P01_Pay": ["Name", "UPI_ID"],
-        "P03_Biz": ["Name", "Job", "Phone", "Social_Links"],
-        "P04_Review": ["Name", "Review_URL"],
-        "P08_Resume": ["Name", "Drive_URL"],
-        "P09_WiFi": ["Name", "SSID", "Password"],
-        "P11_Challan": ["Name", "Vehicle_No", "Engine_No", "Chassis_No"],
-        "P12_Invite": ["Name", "PIN", "Event_Name", "Date", "Maps_Link", "Video_Link"],
-        "P13_Doc": ["Name", "Gadi_Number", "Drive_Link", "Drive_Password", "Password_Free_PDF_Link"]
-    };
-
-    function loadCategory(id) {
+    function openDirect(type) {
+        currentType = type;
         document.getElementById('catGrid').style.display = 'none';
         document.getElementById('formArea').style.display = 'block';
-        const cat = categories[id];
-        document.getElementById('catTitle').innerText = cat.title;
-        const srv = document.getElementById('srvType');
-        srv.innerHTML = '<option value="">-- Select Service --</option>';
-        for(let key in cat.services) { srv.innerHTML += `<option value="${key}">${cat.services[key]} (${key})</option>`; }
-    }
-
-    function renderFields() {
-        const type = document.getElementById('srvType').value;
+        document.getElementById('catTitle').innerText = (type === "P00_Human") ? "Human Safety Form" : "Value Safety Form";
+        
         const area = document.getElementById('fieldsArea');
-        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Cust_ID ($) Unique No.">`;
-        if(config[type]) {
-            config[type].forEach(f => { area.innerHTML += `<input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')} (#)">`; });
-        }
+        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Unique ID (e.g. 7894)">`;
+        fieldConfig[type].forEach(f => {
+            area.innerHTML += `<input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')}">`;
+        });
     }
 
-    // --- Is pure block ko index.html ke script section mein replace karein ---
-function generateAndSync() {
-    const type = document.getElementById('srvType').value;
-    const cid = document.getElementById('Cust_ID').value;
-    const fields = config[type];
-    
-    if(!type || !cid) return alert("Bhai, Details toh bhar do!");
+    function generateAndSync() {
+        const cid = document.getElementById('Cust_ID').value;
+        if(!cid) return alert("ID toh dalo bhai!");
 
-    // FIXED: Ab QR code aapke LIVE GitHub link ka banega (Netlify band ho chuka hai)
-    const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${cid}&type=${type}`;
-    
-    document.getElementById('qrResult').style.display = "block";
-    document.getElementById('qrcode').innerHTML = "";
-    new QRCode(document.getElementById("qrcode"), { text: scanUrl, width: 200, height: 200 });
-    document.getElementById('qrIDLabel').innerText = "ID: " + cid;
+        // GitHub Link
+        const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${cid}&type=${currentType}`;
+        
+        document.getElementById('qrResult').style.display = "block";
+        document.getElementById('qrcode').innerHTML = "";
+        new QRCode(document.getElementById("qrcode"), { text: scanUrl, width: 200, height: 200 });
+        document.getElementById('qrIDLabel').innerText = "ID: " + cid;
 
-    // FIXED: Aapke naye Tab Names (P00_Human & P00_Value)
-    let sheetName = type;
-    if(['P02_Kid','P05_Women','P06_Senior'].includes(type)) sheetName = "P00_Human";
-    if(['P07_Pet','P10_Luggage','P14_Vehicle'].includes(type)) sheetName = "P00_Value";
+        // Data object creation
+        let data = { 
+            "Timestamp": new Date().toLocaleString(),
+            "Cust_ID(No.)": cid 
+        };
+        fieldConfig[currentType].forEach(f => { data[f] = document.getElementById(f).value; });
 
-    // Data object taiyar karna (Exact Sheet Column names ke saath)
-    let data = { 
-        "Timestamp": new Date().toLocaleString(),
-        "Cust_ID(No.)": cid, 
-        "type": type 
-    };
-    
-    // Baaki fields ko data mein add karna
-    fields.forEach(f => { 
-        data[f] = document.getElementById(f).value; 
-    });
-
-    // SheetDB API Call - Iske bina Google Sheet mein data nahi jayega
-    fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${sheetName}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    })
-    .then(res => {
-        if(res.ok) alert("Data Saved Successfully in Tab: " + sheetName);
-        else alert("SheetDB Error! Check if Tab '" + sheetName + "' exists in Sheet.");
-    })
-    .catch(err => alert("Connection Error! Check Internet."));
-}
+        // SheetDB Call
+        fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${currentType}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        })
+        .then(res => res.ok ? alert("Data Saved in " + currentType) : alert("Sheet Error! Check Tab Name."))
+        .catch(err => alert("Internet check karo!"));
+    }
 </script>
 </body>
 </html>
