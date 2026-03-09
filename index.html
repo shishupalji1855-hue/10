@@ -12,10 +12,11 @@
         .cat-btn { padding: 20px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px; }
         .cat1 { background: var(--red); } .cat2 { background: var(--orange); } 
         .cat3 { background: var(--green); } .cat4 { background: #457b9d; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .btn { background: var(--blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+        .btn { background: var(--blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; }
         #formArea { display: none; text-align: left; margin-top: 20px; }
         #qrResult { display: none; margin-top: 30px; padding: 20px; border: 2px dashed var(--blue); border-radius: 15px; }
+        #qrcode { display: flex; justify-content: center; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -30,26 +31,26 @@
     </div>
 
     <div id="formArea">
-        <button onclick="location.reload()" style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold;">← Back</button>
-        <h3 id="catTitle" style="color:var(--blue); margin-bottom:15px;"></h3>
+        <button onclick="location.reload()" style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold; font-size: 16px;">← Back</button>
+        <h3 id="catTitle" style="color:var(--blue); margin: 15px 0;"></h3>
         <div id="subSelectArea"></div>
         <div id="fieldsArea"></div>
         <button class="btn" onclick="generateAndSync()">CREATE QR & SYNC DATA</button>
     </div>
 
     <div id="qrResult">
-        <div id="qrcode" style="display: flex; justify-content: center;"></div>
+        <div id="qrcode"></div>
         <p id="qrIDLabel" style="font-weight:bold; color:var(--blue); margin-top:10px;"></p>
+        <p style="font-size: 12px; color: #666;">Scan this QR or copy the ID for the user.</p>
     </div>
 </div>
-
 <script>
     let currentSheet = "";
     
-    // Exact Protocol Mapping: Only # and $ fields are in Builder
+    // Audit Verified Mapping: Direct match with your Google Sheet columns
     const fieldConfig = {
         "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
-        "P00_Value": ["Person_Name", "Email1", "Email2", "WACompany"],
+        "P00_Value": ["Person_Name", "Email1", "Email2", "WACompany", "Owner_PIN"],
         "P01_Pay": ["Name", "UPI_ID"],
         "P03_Biz": ["Name", "Job", "Phone", "Social_Links"],
         "P04_Review": ["Name", "Review_URL"],
@@ -73,7 +74,6 @@
         document.getElementById('catGrid').style.display = 'none';
         document.getElementById('formArea').style.display = 'block';
         document.getElementById('catTitle').innerText = "Category 3 Services";
-        
         let html = `<select id="subType" onchange="currentSheet=this.value; renderBuilderFields(fieldConfig[this.value])">
                         <option value="">-- Choose Service --</option>
                         <option value="P01_Pay">P01 Pay</option>
@@ -90,32 +90,39 @@
 
     function renderBuilderFields(fields) {
         const area = document.getElementById('fieldsArea');
-        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Cust_ID ($)">`;
+        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Cust_ID (Exact ID for Sheet)">`;
         fields.forEach(f => {
-            area.innerHTML += `<input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')} (#)">`;
+            area.innerHTML += `<input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')}">`;
         });
     }
 
     function generateAndSync() {
         const cid = document.getElementById('Cust_ID').value;
-        if(!cid || !currentSheet) return alert("Pehle ID aur fields bharo!");
+        if(!cid || !currentSheet) return alert("Bhai, ID aur details bharo!");
 
-        const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${cid}&type=${currentSheet}`;
+        // Perfect Scanner URL Audit
+        const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${encodeURIComponent(cid)}&type=${encodeURIComponent(currentSheet)}`;
         
         document.getElementById('qrResult').style.display = "block";
         document.getElementById('qrcode').innerHTML = "";
         new QRCode(document.getElementById("qrcode"), { text: scanUrl, width: 200, height: 200 });
-        document.getElementById('qrIDLabel').innerText = "ID: " + cid;
+        document.getElementById('qrIDLabel').innerText = "Generated ID: " + cid;
 
-        // Automated Field (!): Timestamp added here
-        let data = { "Timestamp": new Date().toLocaleString(), "Cust_ID(No.)": cid };
-        fieldConfig[currentSheet].forEach(f => { data[f] = document.getElementById(f).value; });
+        // Master Data Object
+        let data = { 
+            "Timestamp": new Date().toLocaleString(), 
+            "Cust_ID(No.)": cid 
+        };
+        fieldConfig[currentSheet].forEach(f => { 
+            data[f] = document.getElementById(f).value; 
+        });
 
+        // POST Method for New Row
         fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${currentSheet}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
-        }).then(res => res.ok ? alert("Data Saved in " + currentSheet) : alert("Sheet Error!"));
+        }).then(res => res.ok ? alert("Data Saved Successfully!") : alert("Sheet Sync Error!"));
     }
 </script>
 </body>
