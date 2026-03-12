@@ -2,145 +2,134 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>10haath Master Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --red: #e63946; --blue: #1d3557; --gray: #f4f7f6; --green: #2a9d8f; --orange: #f4a261; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--gray); padding: 20px; }
+        :root { --red: #e63946; --blue: #1d3557; --gray: #f4f7f6; --green: #2a9d8f; --orange: #f4a261; --dark: #1d3557; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--gray); padding: 20px; margin: 0; }
         .card { background: white; max-width: 650px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); margin: auto; text-align: center; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
-        .cat-btn { padding: 20px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px; }
+        .cat-btn { padding: 20px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px; text-transform: uppercase; }
         .cat1 { background: var(--red); } .cat2 { background: var(--orange); } 
         .cat3 { background: var(--green); } .cat4 { background: #457b9d; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
-        .btn { background: var(--blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; }
+        .cat-btn:hover { opacity: 0.8; transform: translateY(-2px); }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .btn { background: var(--dark); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; }
         #formArea { display: none; text-align: left; margin-top: 20px; }
-        #qrResult { display: none; margin-top: 30px; padding: 20px; border: 2px dashed var(--blue); border-radius: 15px; }
-        #qrcode { display: flex; justify-content: center; margin-top: 15px; }
+        #qrResult { display: none; margin-top: 30px; padding: 20px; border: 2px dashed var(--dark); border-radius: 15px; background: #fff; }
+        .back-btn { background: none; border: none; color: var(--red); cursor: pointer; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; }
     </style>
 </head>
 <body>
+    <div class="card">
+        <div id="main-menu">
+            <h2 style="color: var(--dark);">🖐️ 10haath Master Dashboard</h2>
+            <p style="color: #666;">Choose Category to Generate QR/NFC</p>
+            <div class="grid">
+                <button class="cat-btn cat1" onclick="openForm('P00_Human', 'Cat 1: Human Safety')">Category 1: SOS</button>
+                <button class="cat-btn cat2" onclick="openForm('P00_Value', 'Cat 2: Value Safety')">Category 2: Value</button>
+                <button class="cat-btn cat3" onclick="showCat3List()">Category 3: Services</button>
+                <button class="cat-btn cat4" onclick="openForm('P13_Doc', 'Cat 4: Doc Vault')">Category 4: Vault</button>
+            </div>
+        </div>
 
-<div class="card">
-    <h2>🖐️ 10haath Master Dashboard</h2>
-    <div class="grid" id="catGrid">
-        <button class="cat-btn cat1" onclick="openDirect('P00_Human', 'Cat 1: Human Safety')">CAT 1: HUMAN SAFETY</button>
-        <button class="cat-btn cat2" onclick="openDirect('P00_Value', 'Cat 2: Value Safety')">CAT 2: VALUE SAFETY</button>
-        <button class="cat-btn cat3" onclick="loadCat3Menu()">CAT 3: SMART SERVICES</button>
-        <button class="cat-btn cat4" onclick="openDirect('P13_Doc', 'Cat 4: Doc Vault')">CAT 4: DOC VAULT</button>
-    </div>
+        <div id="formArea">
+            <button class="back-btn" onclick="location.reload()">← BACK TO MENU</button>
+            <h3 id="catTitle" style="color: var(--dark);"></h3>
+            <div id="subTypeArea"></div>
+            <div id="dynamicFields"></div>
+            <button class="btn" onclick="syncAndGenerate()">CREATE QR & SYNC TO SHEET</button>
+        </div>
 
-    <div id="formArea">
-        <button onclick="location.reload()" style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold; font-size: 16px;">← Back</button>
-        <h3 id="catTitle" style="color:var(--blue); margin: 15px 0;"></h3>
-        <div id="subSelectArea"></div>
-        <div id="fieldsArea"></div>
-        <button class="btn" onclick="generateAndSync()">CREATE QR & SYNC DATA</button>
+        <div id="qrResult">
+            <h3 style="margin-top:0;">✅ QR Generated Successfully!</h3>
+            <div id="qrcode" style="display: flex; justify-content: center; margin: 20px 0;"></div>
+            <p id="displayID" style="font-weight: bold; color: var(--dark); font-size: 18px;"></p>
+            <button class="btn" style="background: var(--green);" onclick="window.print()">PRINT QR CODE</button>
+        </div>
     </div>
-
-    <div id="qrResult">
-        <div id="qrcode"></div>
-        <p id="qrIDLabel" style="font-weight:bold; color:var(--blue); margin-top:10px;"></p>
-        <p style="font-size: 12px; color: #666;">Scan this QR or copy the ID for the user.</p>
-    </div>
-</div>
 <script>
     let currentSheet = "";
     
-    // Audit Verified Mapping: Direct match with your Google Sheet columns
-    // Isse replace karein (FieldConfig section)
-    const fieldConfig = {
-        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "WACompany", "Owner_PIN"],
-        "P00_Value": ["Person_Name", "WACompany", "Owner_PIN"],
+    // Mapping saare fields ki (P01 se P13 tak)
+    const config = {
+        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
+        "P00_Value": ["Person_Name", "Email1", "Email2", "WACompany"],
         "P01_Pay": ["Name", "UPI_ID"],
         "P03_Biz": ["Name", "Job", "Phone", "Social_Links"],
         "P04_Review": ["Name", "Review_URL"],
         "P08_Resume": ["Name", "Drive_URL"],
-        "P09_WiFi": ["Name", "SSID", "Password"],
-        "P11_Challan": ["Name", "Vehicle_No", "Engine_No", "Chassis_No"],
-        "P12_Invite": ["Name", "PIN", "Event_Name", "Date", "Maps_Link", "Video_Link"],
-        "P13_Doc": ["Name", "Gadi_Number", "Drive_Link", "Drive_Password", "Password_Free_PDF_Link"]
+        "P09_WiFi": ["SSID", "Password"],
+        "P11_Challan": ["Name", "Vehicle_No"],
+        "P12_Invite": ["Event_Name", "PIN", "Date", "Maps_Link"],
+        "P13_Doc": ["Gadi_Number", "Drive_Link", "PDF_Password"]
     };
 
-    function openDirect(sheet, title) {
+    function openForm(sheet, title) {
         currentSheet = sheet;
-        document.getElementById('catGrid').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'none';
         document.getElementById('formArea').style.display = 'block';
         document.getElementById('catTitle').innerText = title;
-        document.getElementById('subSelectArea').innerHTML = "";
-        renderBuilderFields(fieldConfig[sheet]);
+        renderFields(config[sheet]);
     }
 
-    function loadCat3Menu() {
-        document.getElementById('catGrid').style.display = 'none';
+    function showCat3List() {
+        currentSheet = "";
+        document.getElementById('main-menu').style.display = 'none';
         document.getElementById('formArea').style.display = 'block';
-        document.getElementById('catTitle').innerText = "Category 3 Services";
-        let html = `<select id="subType" onchange="currentSheet=this.value; renderBuilderFields(fieldConfig[this.value])">
-                        <option value="">-- Choose Service --</option>
-                        <option value="P01_Pay">P01 Pay</option>
-                        <option value="P03_Biz">P03 Biz</option>
-                        <option value="P04_Review">P04 Review</option>
-                        <option value="P08_Resume">P08 Resume</option>
-                        <option value="P09_WiFi">P09 WiFi</option>
-                        <option value="P11_Challan">P11 Challan</option>
-                        <option value="P12_Invite">P12 Invite</option>
-                    </select>`;
-        document.getElementById('subSelectArea').innerHTML = html;
-        document.getElementById('fieldsArea').innerHTML = "";
+        document.getElementById('catTitle').innerText = "Category 3: Smart Services";
+        document.getElementById('subTypeArea').innerHTML = `
+            <select onchange="currentSheet=this.value; renderFields(config[this.value])">
+                <option value="">-- Select Specific Service --</option>
+                <option value="P01_Pay">P01: Fast Payment</option>
+                <option value="P03_Biz">P03: Biz Card (Save Contact)</option>
+                <option value="P04_Review">P04: Google Review</option>
+                <option value="P08_Resume">P08: Digital Resume</option>
+                <option value="P09_WiFi">P09: WiFi Connect</option>
+                <option value="P11_Challan">P11: Vehicle Challan</option>
+                <option value="P12_Invite">P12: Smart Invite (PIN)</option>
+            </select>
+        `;
     }
 
-    // Is function ko replace karein
-    function renderBuilderFields(fields) {
-        const area = document.getElementById('fieldsArea');
-        // Custom ID input sabse upar
-        area.innerHTML = `<p style="font-size:12px; color:var(--blue); margin-bottom:0;">Sheet Row ID (Must be Unique):</p>
-                          <input type="text" id="Cust_ID" placeholder="e.g. 10H001">`;
-        
+    function renderFields(fields) {
+        const area = document.getElementById('dynamicFields');
+        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Cust_ID (e.g. HG-9696)" required>`;
         fields.forEach(f => {
-            // Label ke saath input generate karna
-            area.innerHTML += `
-                <input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')}">
-            `;
+            area.innerHTML += `<input type="text" id="${f}" placeholder="Enter ${f.replace(/_/g, ' ')}" required>`;
         });
     }
-
-    // Is function ko replace karein
-    function generateAndSync() {
+function syncAndGenerate() {
         const cid = document.getElementById('Cust_ID').value;
-        if(!cid || !currentSheet) return alert("Bhai, Pehle ID aur details bharo!");
+        if (!cid || !currentSheet) return alert("Pehle saari details bharo!");
 
-        // URL trigger for the new Scanner Logic
-        const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${encodeURIComponent(cid)}&type=${encodeURIComponent(currentSheet)}`;
+        // Scanner Link (Update this with your actual GitHub URL)
+        const scannerUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${cid}&type=${currentSheet}`;
         
+        // Show QR Result
         document.getElementById('qrResult').style.display = "block";
         document.getElementById('qrcode').innerHTML = "";
-        
-        // Generating QR
-        new QRCode(document.getElementById("qrcode"), { text: scanUrl, width: 200, height: 200 });
-        document.getElementById('qrIDLabel').innerText = "Generated ID: " + cid;
+        new QRCode(document.getElementById("qrcode"), { text: scannerUrl, width: 220, height: 220 });
+        document.getElementById('displayID').innerText = "ID: " + cid;
 
-        // Data Object for Google Sheet
-        let data = { 
-            "Timestamp": new Date().toLocaleString(), 
-            "Cust_ID(No.)": cid 
-        };
-        
-        fieldConfig[currentSheet].forEach(f => { 
-            data[f] = document.getElementById(f).value; 
+        // Collect Data
+        let data = { "Timestamp": new Date().toLocaleString(), "Cust_ID(No.)": cid };
+        config[currentSheet].forEach(f => {
+            data[f] = document.getElementById(f).value;
         });
 
-        // Sending to SheetDB
+        // Sync to SheetDB
         fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${currentSheet}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
-        }).then(res => {
-            if(res.ok) {
-                alert("Data Saved Successfully! QR ready for user.");
-            } else {
-                alert("Sheet Sync Error! Check API Quota.");
-            }
-        });
+        })
+        .then(res => res.json())
+        .then(res => {
+            alert("Success! Data synced to Sheet: " + currentSheet);
+        })
+        .catch(err => alert("Sheet Sync Failed!"));
     }
 </script>
 </body>
