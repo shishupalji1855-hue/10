@@ -48,9 +48,10 @@
     let currentSheet = "";
     
     // Audit Verified Mapping: Direct match with your Google Sheet columns
+    // Isse replace karein (FieldConfig section)
     const fieldConfig = {
-        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "Email1", "Email2", "WACompany", "Owner_PIN"],
-        "P00_Value": ["Person_Name", "Email1", "Email2", "WACompany", "Owner_PIN"],
+        "P00_Human": ["Person_Name", "Emergency1", "Emergency2", "Emergency3", "WACompany", "Owner_PIN"],
+        "P00_Value": ["Person_Name", "WACompany", "Owner_PIN"],
         "P01_Pay": ["Name", "UPI_ID"],
         "P03_Biz": ["Name", "Job", "Phone", "Social_Links"],
         "P04_Review": ["Name", "Review_URL"],
@@ -88,41 +89,58 @@
         document.getElementById('fieldsArea').innerHTML = "";
     }
 
+    // Is function ko replace karein
     function renderBuilderFields(fields) {
         const area = document.getElementById('fieldsArea');
-        area.innerHTML = `<input type="text" id="Cust_ID" placeholder="Cust_ID (Exact ID for Sheet)">`;
+        // Custom ID input sabse upar
+        area.innerHTML = `<p style="font-size:12px; color:var(--blue); margin-bottom:0;">Sheet Row ID (Must be Unique):</p>
+                          <input type="text" id="Cust_ID" placeholder="e.g. 10H001">`;
+        
         fields.forEach(f => {
-            area.innerHTML += `<input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')}">`;
+            // Label ke saath input generate karna
+            area.innerHTML += `
+                <input type="text" id="${f}" placeholder="${f.replace(/_/g,' ')}">
+            `;
         });
     }
 
+    // Is function ko replace karein
     function generateAndSync() {
         const cid = document.getElementById('Cust_ID').value;
-        if(!cid || !currentSheet) return alert("Bhai, ID aur details bharo!");
+        if(!cid || !currentSheet) return alert("Bhai, Pehle ID aur details bharo!");
 
-        // Perfect Scanner URL Audit
+        // URL trigger for the new Scanner Logic
         const scanUrl = `https://shishupalji1855-hue.github.io/10/scanner.html?id=${encodeURIComponent(cid)}&type=${encodeURIComponent(currentSheet)}`;
         
         document.getElementById('qrResult').style.display = "block";
         document.getElementById('qrcode').innerHTML = "";
+        
+        // Generating QR
         new QRCode(document.getElementById("qrcode"), { text: scanUrl, width: 200, height: 200 });
         document.getElementById('qrIDLabel').innerText = "Generated ID: " + cid;
 
-        // Master Data Object
+        // Data Object for Google Sheet
         let data = { 
             "Timestamp": new Date().toLocaleString(), 
             "Cust_ID(No.)": cid 
         };
+        
         fieldConfig[currentSheet].forEach(f => { 
             data[f] = document.getElementById(f).value; 
         });
 
-        // POST Method for New Row
+        // Sending to SheetDB
         fetch(`https://sheetdb.io/api/v1/vpozwh7cptzc4?sheet=${currentSheet}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
-        }).then(res => res.ok ? alert("Data Saved Successfully!") : alert("Sheet Sync Error!"));
+        }).then(res => {
+            if(res.ok) {
+                alert("Data Saved Successfully! QR ready for user.");
+            } else {
+                alert("Sheet Sync Error! Check API Quota.");
+            }
+        });
     }
 </script>
 </body>
