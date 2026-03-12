@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>10haath SOS Confirm</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #1b1b1b;
+        --muted: #5b5b5b;
+        --paper: #f7f3ea;
+        --accent: #c23b22;
+        --accent-2: #0f7a6d;
+        --card: #ffffff;
+        --border: #e2d8c5;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: radial-gradient(circle at top, #fff7e3, var(--paper));
+        color: var(--ink);
+      }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 24px 18px 64px; }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+      h1 { margin: 0 0 8px; font-size: 24px; }
+      .muted { color: var(--muted); font-size: 14px; }
+      .row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+      label {
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      input, select {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        font-family: inherit;
+        font-size: 14px;
+      }
+      .btn {
+        border: none;
+        padding: 12px 18px;
+        border-radius: 12px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 8px;
+      }
+      .btn.secondary { background: var(--accent-2); }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>10haath SOS Confirm</h1>
+        <div class="muted" id="status">Preparing live link...</div>
+
+        <div class="row">
+          <div>
+            <label>Live Location Link</label>
+            <input type="text" id="liveLinkBox" readonly />
+            <button class="btn secondary" id="copyLink">COPY LINK</button>
+          </div>
+          <div>
+            <label>Confirm Link (Paste Here)</label>
+            <input type="text" id="confirmLink" placeholder="Paste link here" />
+            <button class="btn" id="confirmSave">CONFIRM & SAVE</button>
+          </div>
+        </div>
+
+        <div class="row hidden" id="sendRow">
+          <div>
+            <label>Send Message</label>
+            <select id="sendConfirm">
+              <option value="">Choose...</option>
+              <option value="ok">OK</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE_DEFAULT = "https://sheetdb.io/api/v1/vpozwh7cptzc4";
+      const API_BASE =
+        localStorage.getItem("10haath_api_base") || API_BASE_DEFAULT;
+
+      const params = new URLSearchParams(window.location.search);
+      const custId = params.get("id");
+      const tab = params.get("type");
+      const liveLink = params.get("live") || "";
+      const msg = params.get("msg") || "";
+      const sessionId = params.get("session");
+
+      const statusEl = document.getElementById("status");
+      const liveLinkBox = document.getElementById("liveLinkBox");
+      const confirmLink = document.getElementById("confirmLink");
+      const copyLinkBtn = document.getElementById("copyLink");
+      const confirmSaveBtn = document.getElementById("confirmSave");
+      const sendRow = document.getElementById("sendRow");
+      const sendConfirm = document.getElementById("sendConfirm");
+
+      liveLinkBox.value = liveLink;
+
+      function idField() {
+        return tab === "P00_Human" || tab === "P00_Value" ? "Cust_ID(No.)" : "Cust_ID";
+      }
+
+      function humanTimestamp() {
+        return new Date().toLocaleString("en-IN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+
+      async function sheetdbSearchById(sheetName, idValue) {
+        const field = idField();
+        const params1 = new URLSearchParams();
+        params1.set(field, idValue);
+        const url1 = `${API_BASE}/${sheetName}/search?${params1.toString()}`;
+        let res = await fetch(url1);
+        if (!res.ok) {
+          const params2 = new URLSearchParams();
+          params2.set("sheet", sheetName);
+          params2.set(field, idValue);
+          const url2 = `${API_BASE}/search?${params2.toString()}`;
+          res = await fetch(url2);
+        }
+        if (!res.ok) return { ok: false, rows: [] };
+        const rows = await res.json();
+        return { ok: true, rows };
+      }
+
+      async function sheetdbPatchById(sheetName, idValue, payload) {
+        const field = idField();
+        const pathUrl = `${API_BASE}/${sheetName}/${encodeURIComponent(
+          field
+        )}/${encodeURIComponent(idValue)}`;
+        let res = await fetch(pathUrl, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok || res.status !== 404) return res;
+        const params = new URLSearchParams();
+        params.set("sheet", sheetName);
+        params.set(field, idValue);
+        const queryUrl = `${API_BASE}?${params.toString()}`;
+        res = await fetch(queryUrl, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        return res;
+      }
+
+      async function saveLiveLocation() {
+        const payload = {
+          Timestamp: humanTimestamp(),
+          "Liv location": liveLink,
+        };
+        let res = await sheetdbPatchById(tab, custId, payload);
+        if (res.ok) return true;
+        const search = await sheetdbSearchById(tab, custId);
+        if (search.ok && search.rows[0]) {
+          const rowId = search.rows[0].id || search.rows[0].row_id;
+          if (rowId) {
+            res = await fetch(`${API_BASE}/${tab}/id/${encodeURIComponent(rowId)}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            if (res.ok) return true;
+          }
+        }
+        return false;
+      }
+
+      function buildWhatsAppUrl(phone, text) {
+        const base = phone ? `https://wa.me/${phone}` : "https://wa.me/";
+        return `${base}?text=${encodeURIComponent(text)}`;
+      }
+
+      async function getEmergency1() {
+        const search = await sheetdbSearchById(tab, custId);
+        return search.rows?.[0]?.Emergency1 || "";
+      }
+
+      copyLinkBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(liveLink);
+          statusEl.textContent = "Live link copied.";
+        } catch (e) {
+          statusEl.textContent = "Copy failed. Long-press to copy.";
+        }
+      });
+
+      confirmSaveBtn.addEventListener("click", async () => {
+        const entered = confirmLink.value.trim();
+        if (entered !== liveLink) {
+          statusEl.textContent = "Please paste the exact live link to confirm.";
+          return;
+        }
+        statusEl.textContent = "Saving live location...";
+        const ok = await saveLiveLocation();
+        if (!ok) {
+          statusEl.textContent = "Save failed. Check SheetDB permissions.";
+          return;
+        }
+        statusEl.textContent = "Live location saved.";
+        sendRow.classList.remove("hidden");
+      });
+
+      sendConfirm.addEventListener("change", async () => {
+        if (sendConfirm.value !== "ok") return;
+        const e1 = await getEmergency1();
+        if (e1) {
+          window.open(buildWhatsAppUrl(String(e1).replace(/\D/g, ""), msg), "_blank");
+        }
+      });
+
+      // Start live tracking sender in a new tab
+      if (sessionId) {
+        const sendUrl = `${window.location.origin}${window.location.pathname.replace(
+          "sos-confirm.html",
+          ""
+        )}live-track.html?mode=send&session=${encodeURIComponent(sessionId)}`;
+        window.open(sendUrl, "_blank");
+      }
+
+      statusEl.textContent = "Paste link and confirm to save.";
+    </script>
+  </body>
+</html>

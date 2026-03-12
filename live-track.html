@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>10haath Live Location</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #1b1b1b;
+        --muted: #5b5b5b;
+        --paper: #f7f3ea;
+        --accent: #0f7a6d;
+        --card: #ffffff;
+        --border: #e2d8c5;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: radial-gradient(circle at top, #fff7e3, var(--paper));
+        color: var(--ink);
+      }
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 24px 18px 64px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .btn {
+        border: none;
+        padding: 12px 16px;
+        border-radius: 12px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        margin-top: 12px;
+      }
+      .box {
+        margin-top: 12px;
+        padding: 12px;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        background: #fffaf0;
+        white-space: pre-wrap;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1 id="title">10haath Live Location</h1>
+        <div class="muted" id="status">Initializing...</div>
+        <div class="box" id="coordsBox">Waiting for GPS...</div>
+        <button class="btn" id="openMaps">Open in Maps</button>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE_DEFAULT = "https://sheetdb.io/api/v1/vpozwh7cptzc4";
+      const API_BASE =
+        localStorage.getItem("10haath_api_base") || API_BASE_DEFAULT;
+      const LIVE_TAB = "Liv location";
+
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get("mode") || "view";
+      const session = params.get("session");
+
+      const statusEl = document.getElementById("status");
+      const coordsBox = document.getElementById("coordsBox");
+      const openMaps = document.getElementById("openMaps");
+
+      let lastLat = null;
+      let lastLng = null;
+      let lastLink = "";
+
+      function mapsLink(lat, lng) {
+        return `https://maps.google.com/?q=${lat},${lng}`;
+      }
+
+      async function pushLocation(lat, lng) {
+        const payload = {
+          Session_ID: session,
+          Latitude: String(lat),
+          Longitude: String(lng),
+          Timestamp: new Date().toISOString(),
+          "Liv location": mapsLink(lat, lng),
+        };
+        await fetch(`${API_BASE}/${LIVE_TAB}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      function startSender() {
+        if (!navigator.geolocation) {
+          statusEl.textContent = "GPS not available on this device.";
+          return;
+        }
+        statusEl.textContent = "Live tracking ON. Keep this page open.";
+        navigator.geolocation.watchPosition(
+          async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            lastLat = latitude;
+            lastLng = longitude;
+            lastLink = mapsLink(latitude, longitude);
+            coordsBox.textContent = `Live: ${lastLink}\nUpdated: ${new Date().toLocaleTimeString()}`;
+            await pushLocation(latitude, longitude);
+          },
+          () => {
+            statusEl.textContent = "Unable to get GPS.";
+          },
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
+        );
+      }
+
+      async function fetchLatest() {
+        if (!session) return;
+        const url = `${API_BASE}/search?sheet=${encodeURIComponent(
+          LIVE_TAB
+        )}&Session_ID=${encodeURIComponent(session)}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          statusEl.textContent = "Live data not available yet.";
+          return;
+        }
+        const data = await res.json();
+        const latest = data[data.length - 1];
+        if (!latest) {
+          statusEl.textContent = "Waiting for live updates...";
+          return;
+        }
+        lastLat = latest.Latitude;
+        lastLng = latest.Longitude;
+        lastLink = mapsLink(lastLat, lastLng);
+        coordsBox.textContent = `Live: ${lastLink}\nUpdated: ${latest.Timestamp}`;
+        statusEl.textContent = "Live location active.";
+      }
+
+      if (!session) {
+        statusEl.textContent = "Missing live session.";
+      } else if (mode === "send") {
+        startSender();
+      } else {
+        statusEl.textContent = "Waiting for live updates...";
+        fetchLatest();
+        setInterval(fetchLatest, 10000);
+      }
+
+      openMaps.addEventListener("click", () => {
+        if (lastLink) window.open(lastLink, "_blank");
+      });
+    </script>
+  </body>
+</html>

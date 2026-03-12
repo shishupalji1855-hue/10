@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>10haath SOS Share</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #1b1b1b;
+        --muted: #5b5b5b;
+        --paper: #f7f3ea;
+        --accent: #c23b22;
+        --card: #ffffff;
+        --border: #e2d8c5;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: radial-gradient(circle at top, #fff7e3, var(--paper));
+        color: var(--ink);
+      }
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 24px 18px 64px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+      .hero {
+        display: grid;
+        gap: 10px;
+        text-align: center;
+        margin-bottom: 12px;
+      }
+      .pulse {
+        width: 74px;
+        height: 74px;
+        margin: 0 auto;
+        border-radius: 50%;
+        background: rgba(194, 59, 34, 0.15);
+        position: relative;
+      }
+      .pulse::after {
+        content: "";
+        position: absolute;
+        inset: 16px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1.6);
+          opacity: 0;
+        }
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .btn {
+        border: none;
+        padding: 14px 18px;
+        border-radius: 12px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 12px;
+        font-size: 16px;
+      }
+      .btn.magic {
+        font-size: 18px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        box-shadow: 0 8px 20px rgba(194, 59, 34, 0.35);
+      }
+      .stage {
+        margin-top: 12px;
+        padding: 12px;
+        border-radius: 12px;
+        background: #fff2ec;
+        font-size: 14px;
+      }
+      .box {
+        margin-top: 12px;
+        padding: 12px;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        background: #fffaf0;
+        white-space: pre-wrap;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="hero">
+          <div class="pulse"></div>
+          <h1 id="title">10haath SOS</h1>
+          <div class="muted" id="status">Preparing SOS message...</div>
+        </div>
+        <button class="btn magic" id="magicBtn">ONE-TAP SOS BLAST</button>
+        <div class="stage" id="stageText">
+          Step 1: Fetching live GPS... Step 2: Preparing emergency message...
+        </div>
+        <button class="btn" id="shareBtn">OPEN SHARE SHEET</button>
+        <button class="btn" id="whatsBtn" style="background:#1aa260;">OPEN WHATSAPP SHARE</button>
+        <button class="btn" id="copyBtn" style="background:#3b3b3b;">COPY MESSAGE</button>
+        <div class="box" id="msgBox"></div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE_DEFAULT = "https://sheetdb.io/api/v1/vpozwh7cptzc4";
+      const API_BASE =
+        localStorage.getItem("10haath_api_base") || API_BASE_DEFAULT;
+
+      const params = new URLSearchParams(window.location.search);
+      const custId = params.get("id");
+      const tab = params.get("type");
+
+      const statusEl = document.getElementById("status");
+      const msgBox = document.getElementById("msgBox");
+      const titleEl = document.getElementById("title");
+      const shareBtn = document.getElementById("shareBtn");
+      const magicBtn = document.getElementById("magicBtn");
+      const whatsBtn = document.getElementById("whatsBtn");
+      const copyBtn = document.getElementById("copyBtn");
+      const stageText = document.getElementById("stageText");
+
+      let messageText = "SOS";
+      let liveLink = "";
+      let sessionId = "";
+      let trackingStarted = false;
+
+      function buildMessage(identity, liveUrl) {
+        return `10haath SOS\nImmediate help needed for ${identity}.\nLive location: ${liveUrl}`;
+      }
+
+      async function getGpsLink() {
+        return new Promise((resolve) => {
+          if (!navigator.geolocation) {
+            resolve("Location not available");
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const { latitude, longitude } = pos.coords;
+              resolve(`https://maps.google.com/?q=${latitude},${longitude}`);
+            },
+            () => resolve("Location not available"),
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        });
+      }
+
+      async function loadRecord() {
+        if (!custId || !tab) {
+          statusEl.textContent = "Missing QR parameters.";
+          return;
+        }
+        const primaryUrl = `${API_BASE}/${tab}/search?Cust_ID=${encodeURIComponent(
+          custId
+        )}`;
+        const altUrl = `${API_BASE}/search?sheet=${encodeURIComponent(
+          tab
+        )}&Cust_ID=${encodeURIComponent(custId)}`;
+        let res = await fetch(primaryUrl);
+        if (!res.ok && res.status === 404) {
+          res = await fetch(altUrl);
+        }
+        if (!res.ok) {
+          statusEl.textContent = "Unable to fetch record.";
+          return;
+        }
+        const data = await res.json();
+        const record = data[0];
+        const identity =
+          record?.Person_Name || record?.Gadi_Number || record?.Name || "10haath";
+        titleEl.textContent = `SOS for ${identity}`;
+        const rand = Math.random().toString(36).slice(2, 10);
+        sessionId = `${Date.now().toString(36)}-${rand}`;
+        liveLink = `${window.location.origin}${window.location.pathname.replace(
+          "sos-share.html",
+          "live-track.html"
+        )}?mode=view&session=${encodeURIComponent(sessionId)}`;
+        messageText = buildMessage(identity, liveLink);
+        msgBox.textContent = messageText;
+        statusEl.textContent = "Ready to share.";
+        stageText.textContent =
+          "Step 1: GPS locked. Step 2: Message ready. Step 3: Tap ONE-TAP SOS BLAST.";
+      }
+
+      async function startLiveTracking() {
+        if (trackingStarted || !sessionId) return;
+        trackingStarted = true;
+        const sendUrl = `${window.location.origin}${window.location.pathname.replace(
+          "sos-share.html",
+          "live-track.html"
+        )}?mode=send&session=${encodeURIComponent(sessionId)}`;
+        window.open(sendUrl, "_blank");
+      }
+
+      async function openShareSheet() {
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: "10haath SOS",
+              text: messageText,
+            });
+            return true;
+          } catch (e) {
+            return false;
+          }
+        }
+        return false;
+      }
+
+      magicBtn.addEventListener("click", async () => {
+        stageText.textContent = "Launching emergency share... please select contacts.";
+        if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
+        await startLiveTracking();
+        const ok = await openShareSheet();
+        if (!ok) {
+          statusEl.textContent =
+            "Share sheet not available. Use WhatsApp Share or Copy Message.";
+        }
+      });
+
+      shareBtn.addEventListener("click", async () => {
+        const ok = await openShareSheet();
+        if (!ok) {
+          statusEl.textContent =
+            "Share sheet not available. Use WhatsApp Share or Copy Message.";
+        }
+      });
+
+      whatsBtn.addEventListener("click", () => {
+        const shareUrl = `https://wa.me/?text=${encodeURIComponent(messageText)}`;
+        window.open(shareUrl, "_blank");
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(messageText);
+          statusEl.textContent = "Message copied. Paste into WhatsApp and forward.";
+        } catch (e) {
+          statusEl.textContent = "Copy failed. Select text manually.";
+        }
+      });
+
+      loadRecord();
+    </script>
+  </body>
+</html>
