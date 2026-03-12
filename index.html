@@ -261,7 +261,7 @@
     <script>
       const API_BASE_DEFAULT = "https://sheetdb.io/api/v1/vpozwh7cptzc4";
       const SCAN_BASE_DEFAULT =
-        "https://shishupalji1855-hue.github.io/10/scanner_v2.html";
+        "https://shishupalji1855-hue.github.io/10/scanner_tabs.html";
 
       const SYMBOLS = {
         AUTOMATED: "!",
@@ -579,9 +579,34 @@
           return;
         }
 
-        const scanUrl = `${SCAN_BASE}?id=${encodeURIComponent(
-          custValue
-        )}&type=${encodeURIComponent(activeService)}&v=${Date.now()}`;
+        // Low-density QR: embed only minimal fields (no owner code in URL)
+        const shortName =
+          (payload.Person_Name ||
+            payload.Gadi_Number ||
+            payload.Name ||
+            payload.Business_Name ||
+            payload.Owner_Name ||
+            "") + "";
+        const secret = btoa(
+          unescape(
+            encodeURIComponent(
+              JSON.stringify({
+                e: payload.Emergency1 || "",
+                p: payload.Owner_PIN || "",
+              })
+            )
+          )
+        )
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/g, "");
+        const scanUrl =
+          `${SCAN_BASE}?` +
+          `type=${encodeURIComponent(activeService)}` +
+          `&n=${encodeURIComponent(shortName)}` +
+          `&w=${encodeURIComponent(payload.WACompany || "")}` +
+          `&s=${encodeURIComponent(secret)}` +
+          `&v=${Date.now()}`;
         const displayName =
           payload.Person_Name ||
           payload.Gadi_Number ||
