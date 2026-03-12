@@ -33,13 +33,24 @@
     const API_BASE = "https://sheetdb.io/api/v1/vpozwh7cptzc4";
 
     if (cid && type) {
-        fetch(`${API_BASE}/search?Cust_ID(No.)=${encodeURIComponent(cid)}&sheet=${type}`)
+        // Step 1: Poori sheet fetch karo
+        fetch(`${API_BASE}?sheet=${type}`)
         .then(res => res.json())
         .then(data => {
-            if (data && data.length > 0) startApp(data[0]);
-            else document.getElementById('status').innerText = "Data Not Found!";
+            // Step 2: Manually ID match karo (ekdum safe tareeka)
+            const foundData = data.find(row => 
+                String(row["Cust_ID(No.)"]).trim() === String(cid).trim()
+            );
+
+            if (foundData) {
+                startApp(foundData);
+            } else {
+                document.getElementById('status').innerText = "Error: ID " + cid + " active nahi hai.";
+            }
         })
-        .catch(() => { document.getElementById('status').innerText = "Network Error!"; });
+        .catch(err => {
+            document.getElementById('status').innerText = "Server Error! Please try again.";
+        });
     }
 
     function startApp(d) {
