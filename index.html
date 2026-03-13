@@ -458,6 +458,8 @@
           e: payload.Emergency1 || "",
           p: payload.Owner_PIN || "",
           c: custValue || "",
+          e1: payload.Email1 || "",
+          e2: payload.Email2 || "",
         });
 
         const scanJoiner = SCAN_BASE.includes("?") ? "&" : "?";

@@ -209,18 +209,34 @@
           return "";
         }
       }
+      async function fetchExistingRow(sheetName, idValue) {
+        const trySearch = async (fieldName) => {
+          const url = `${API_BASE}/search?${encodeURIComponent(fieldName)}=${encodeURIComponent(idValue)}&sheet=${encodeURIComponent(sheetName)}`;
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          const data = await res.json();
+          if (!Array.isArray(data) || data.length === 0) return null;
+          return data[data.length - 1];
+        };
+        let row = await trySearch("Cust_ID");
+        if (!row) row = await trySearch("Cust_ID(No.)");
+        return row || {};
+      }
       async function saveLiveLocation(sheetName, idValue, liveLink, rec) {
         if (!idValue) return { ok: false, mode: "missing_id" };
         const payload = { Timestamp: humanTimestamp(), "Liv location": liveLink };
         try {
+          const existing = await fetchExistingRow(sheetName, idValue);
+          const email1 = existing.Email1 || existing["Email1"] || rec?.Email1 || "";
+          const email2 = existing.Email2 || existing["Email2"] || rec?.Email2 || "";
           const createPayload = {
             Timestamp: payload.Timestamp,
             "Cust_ID(No.)": idValue,
             Cust_ID: idValue,
             Person_Name: rec?.Person_Name || "",
             Emergency1: rec?.Emergency1 || "",
-            Email1: rec?.Email1 || "",
-            Email2: rec?.Email2 || "",
+            Email1: email1,
+            Email2: email2,
             WACompany: rec?.WACompany || "",
             Owner_PIN: rec?.Owner_PIN || "",
             Dikkat: "",
@@ -264,6 +280,8 @@
           record = {
             Person_Name: qName || "10haath",
             Emergency1: sec.e || "",
+            Email1: sec.e1 || "",
+            Email2: sec.e2 || "",
             Owner_PIN: sec.p || "",
             WACompany: qWa || "",
           };
