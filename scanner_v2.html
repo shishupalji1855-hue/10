@@ -197,6 +197,9 @@
             res = await putWithBody(queryUrl, { data: payload });
           }
         }
+        if (!res.ok) {
+          res._debugUrl = queryUrl;
+        }
         return res;
       }
       async function readResponseText(res) {
@@ -211,6 +214,14 @@
         const payload = { Timestamp: humanTimestamp(), "Liv location": liveLink };
         let res = await sheetdbPatchById(sheetName, idValue, payload);
         if (res.ok) return { ok: true, mode: "patch", status: res.status };
+        const patchDetail = await readResponseText(res);
+        const patchFail = {
+          ok: false,
+          mode: "patch_failed",
+          status: res.status,
+          detail: patchDetail,
+          debugUrl: res._debugUrl || "",
+        };
         try {
           const createPayload = {
             Timestamp: payload.Timestamp,
@@ -241,7 +252,7 @@
             return { ok: false, mode: "insert_failed", status: postRes.status, detail };
           }
           return { ok: true, mode: "insert", status: postRes.status };
-        } catch (e) { return { ok: false, mode: "fail" }; }
+        } catch (e) { return patchFail; }
       }
 
       async function fetchRecord() {
@@ -342,6 +353,9 @@
                 if (saveResult.detail) {
                   const snippet = saveResult.detail.replace(/\s+/g, " ").slice(0, 140);
                   statusText.textContent += ` ${snippet}`;
+                }
+                if (saveResult.debugUrl) {
+                  statusText.textContent += ` URL: ${saveResult.debugUrl}`;
                 }
                 return;
               }
