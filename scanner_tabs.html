@@ -169,21 +169,27 @@
       async function sheetdbPatchById(sheetName, idValue, payload) {
         const field = sheetName === "P00_Human" || sheetName === "P00_Value" ? "Cust_ID(No.)" : "Cust_ID";
         const pathUrl = `${API_BASE}/${sheetName}/${encodeURIComponent(field)}/${encodeURIComponent(idValue)}`;
-        let res = await fetch(pathUrl, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok || res.status !== 404) return res;
+        const patchWithBody = (url, body) =>
+          fetch(url, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+
+        let res = await patchWithBody(pathUrl, payload);
+        if (!res.ok) {
+          res = await patchWithBody(pathUrl, { data: payload });
+        }
+        if (res.ok) return res;
+        if (res.status !== 404) return res;
         const params = new URLSearchParams();
         params.set("sheet", sheetName);
         params.set(field, idValue);
         const queryUrl = `${API_BASE}?${params.toString()}`;
-        res = await fetch(queryUrl, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        res = await patchWithBody(queryUrl, payload);
+        if (!res.ok) {
+          res = await patchWithBody(queryUrl, { data: payload });
+        }
         return res;
       }
       async function saveLiveLocation(sheetName, idValue, liveLink, rec) {
@@ -206,11 +212,16 @@
             "ScannerNo.": "",
             "Liv location": liveLink,
           };
-          await fetch(`${API_BASE}/${sheetName}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(createPayload),
-          });
+          const postWithBody = (body) =>
+            fetch(`${API_BASE}/${sheetName}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+          let postRes = await postWithBody(createPayload);
+          if (!postRes.ok) {
+            postRes = await postWithBody({ data: createPayload });
+          }
           return { ok: true, mode: "insert", status: 201 };
         } catch (e) { return { ok: false, mode: "fail" }; }
       }
