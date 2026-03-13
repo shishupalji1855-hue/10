@@ -319,12 +319,29 @@
         });
 
         logSubmit.addEventListener("click", async () => {
-          const payload = {
-            "ScannerNo.": document.getElementById("scannerNo").value || "",
-            Dikkat: document.getElementById("dikkat").value || "",
-          };
-          if (embeddedId && tab) await sheetdbPatchById(tab, embeddedId, payload);
-          statusText.textContent = "Logbook updated.";
+          const scannerNo = document.getElementById("scannerNo").value || "";
+          const dikkat = document.getElementById("dikkat").value || "";
+          const recipients = [record.Email1, record.Email2].filter(Boolean).join(",");
+          if (!recipients) {
+            statusText.textContent = "Email not available for this QR.";
+            return;
+          }
+          const subject = encodeURIComponent(`🚨 Savior Alert - ${record.Person_Name || "10haath"}`);
+          const body = encodeURIComponent(
+            `आपातकालीन सूचना (Savior Report)\n\n` +
+            `नाम: ${record.Person_Name || "10haath"}\n` +
+            `स्कैनर मोबाइल: ${scannerNo}\n` +
+            `समस्या/दिक्कत: ${dikkat}\n\n` +
+            `कृपया तुरंत जवाब दें।\n\n` +
+            `---\n` +
+            `Emergency report from Savior.\n\n` +
+            `Name: ${record.Person_Name || "10haath"}\n` +
+            `Scanner Phone: ${scannerNo}\n` +
+            `Problem: ${dikkat}\n\n` +
+            `Please respond immediately.`
+          );
+          window.location.href = `mailto:${recipients}?subject=${subject}&body=${body}`;
+          statusText.textContent = "Email app opened.";
         });
 
         if (isCat1) {
