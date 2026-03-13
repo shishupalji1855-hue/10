@@ -168,6 +168,7 @@
       }
       async function sheetdbPatchById(sheetName, idValue, payload) {
         const field = sheetName === "P00_Human" || sheetName === "P00_Value" ? "Cust_ID(No.)" : "Cust_ID";
+        const pathUrl = `${API_BASE}/${encodeURIComponent(sheetName)}/${encodeURIComponent(field)}/${encodeURIComponent(idValue)}`;
         const patchWithBody = (url, body) =>
           fetch(url, {
             method: "PATCH",
@@ -181,11 +182,25 @@
             body: JSON.stringify(body),
           });
 
+        // Try path-style updates first (SheetDB canonical update)
+        let res = await patchWithBody(pathUrl, payload);
+        if (!res.ok) {
+          res = await patchWithBody(pathUrl, { data: payload });
+        }
+        if (!res.ok) {
+          res = await putWithBody(pathUrl, payload);
+          if (!res.ok) {
+            res = await putWithBody(pathUrl, { data: payload });
+          }
+        }
+        if (res.ok) return res;
+
+        // Fallback to query-style update
         const params = new URLSearchParams();
         params.set("sheet", sheetName);
         params.set(field, idValue);
         const queryUrl = `${API_BASE}?${params.toString()}`;
-        let res = await patchWithBody(queryUrl, payload);
+        res = await patchWithBody(queryUrl, payload);
         if (!res.ok) {
           res = await patchWithBody(queryUrl, { data: payload });
         }
