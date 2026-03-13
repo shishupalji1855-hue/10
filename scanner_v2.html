@@ -50,7 +50,7 @@
       <header>
         <h1 id="identityHeading">Loading...</h1>
         <div class="subtitle" id="identitySub"></div>
-        <div class="subtitle mono">Build: 2026-03-13 00:40 IST</div>
+        <div class="subtitle mono">Build: 2026-03-13 13:30 IST</div>
         <div class="subtitle" style="color:#ffb27a; font-weight:600;">QRDOCTOR STYLE TABS ACTIVE</div>
       </header>
 
@@ -113,6 +113,7 @@
       const qName = params.get("n") || "";
       const qWa = params.get("w") || "";
       const qSecret = params.get("s") || "";
+      const urlId = params.get("id") || "";
 
       const identityHeading = document.getElementById("identityHeading");
       const identitySub = document.getElementById("identitySub");
@@ -217,7 +218,7 @@
       async function fetchRecord() {
         if (qName || qSecret || qWa) {
           const sec = decodeSecret(qSecret) || {};
-          embeddedId = sec.c || "";
+          embeddedId = sec.c || urlId || "";
           record = {
             Person_Name: qName || "10haath",
             Emergency1: sec.e || "",

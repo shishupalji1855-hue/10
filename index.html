@@ -463,7 +463,8 @@
           `t=${encodeURIComponent(activeService)}` +
           `&n=${encodeURIComponent(shortName)}` +
           `&w=${encodeURIComponent(payload.WACompany || "")}` +
-          `&s=${encodeURIComponent(secret)}`;
+          `&s=${encodeURIComponent(secret)}` +
+          `&id=${encodeURIComponent(custValue)}`;
 
         const displayName =
           payload.Person_Name ||

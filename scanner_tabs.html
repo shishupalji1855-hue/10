@@ -113,6 +113,7 @@
       const qName = params.get("n") || "";
       const qWa = params.get("w") || "";
       const qSecret = params.get("s") || "";
+      const urlId = params.get("id") || "";
 
       const identityHeading = document.getElementById("identityHeading");
       const identitySub = document.getElementById("identitySub");
@@ -217,7 +218,7 @@
       async function fetchRecord() {
         if (qName || qSecret || qWa) {
           const sec = decodeSecret(qSecret) || {};
-          embeddedId = sec.c || "";
+          embeddedId = sec.c || urlId || "";
           record = {
             Person_Name: qName || "10haath",
             Emergency1: sec.e || "",
@@ -362,4 +363,3 @@
     </script>
   </body>
 </html>
-
