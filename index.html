@@ -429,6 +429,7 @@
           alert("Owner Code is required.");
           return;
         }
+        payload.Cust_ID = custValue;
 
         if (!API_BASE || API_BASE.includes("REPLACE_ME")) {
           alert("Please set a valid SheetDB API Base.");

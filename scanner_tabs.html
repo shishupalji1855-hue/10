@@ -167,7 +167,7 @@
         });
       }
       async function sheetdbPatchById(sheetName, idValue, payload) {
-        const field = sheetName === "P00_Human" || sheetName === "P00_Value" ? "Cust_ID(No.)" : "Cust_ID";
+        const field = "Cust_ID";
         const pathUrl = `${API_BASE}/${encodeURIComponent(sheetName)}/${encodeURIComponent(field)}/${encodeURIComponent(idValue)}`;
         const patchWithBody = (url, body) =>
           fetch(url, {
@@ -227,8 +227,8 @@
         try {
           const createPayload = {
             Timestamp: payload.Timestamp,
-            "Cust_ID(No.)": sheetName === "P00_Human" || sheetName === "P00_Value" ? idValue : "",
-            Cust_ID: sheetName !== "P00_Human" && sheetName !== "P00_Value" ? idValue : "",
+            "Cust_ID(No.)": idValue,
+            Cust_ID: idValue,
             Person_Name: rec?.Person_Name || "",
             Emergency1: rec?.Emergency1 || "",
             Email1: rec?.Email1 || "",
