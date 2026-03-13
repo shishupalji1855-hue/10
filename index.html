@@ -460,8 +460,9 @@
           c: custValue || "",
         });
 
+        const scanJoiner = SCAN_BASE.includes("?") ? "&" : "?";
         const scanUrl =
-          `${SCAN_BASE}?` +
+          `${SCAN_BASE}${scanJoiner}` +
           `t=${encodeURIComponent(activeService)}` +
           `&n=${encodeURIComponent(shortName)}` +
           `&w=${encodeURIComponent(payload.WACompany || "")}` +

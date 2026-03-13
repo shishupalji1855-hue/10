@@ -132,9 +132,6 @@
 
       let record = null;
       let embeddedId = "";
-      let trackingWatchId = null;
-      let lastSavedAt = 0;
-      let lastSavedLink = "";
 
       function sanitizePhone(value) { return String(value || "").replace(/\D/g, ""); }
       function buildWhatsAppUrl(phone, text) {
@@ -357,19 +354,6 @@
               </div>
             `;
             sosButtons.appendChild(helperNote);
-
-            const trackWrap = document.createElement("div");
-            trackWrap.style.marginTop = "12px";
-            const baseUrl = window.location.href.split("?")[0]
-              .replace("scanner_tabs.html", "live-track.html")
-              .replace("scanner.html", "live-track.html")
-              .replace("scanner_v2.html", "live-track.html");
-            const trackUrl = `${baseUrl}?sheet=${encodeURIComponent(tab || "P00_Human")}&id=${encodeURIComponent(embeddedId)}`;
-            trackWrap.innerHTML = `
-              <label>Live Tracking Page</label>
-              <input type="text" id="trackUrlBox" value="${trackUrl}" readonly />
-            `;
-            sosButtons.appendChild(trackWrap);
 
             const liveLinkBox = confirmWrap.querySelector("#liveLinkBox");
             const confirmLink = confirmWrap.querySelector("#confirmLink");
