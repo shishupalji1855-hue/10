@@ -168,7 +168,6 @@
       }
       async function sheetdbPatchById(sheetName, idValue, payload) {
         const field = sheetName === "P00_Human" || sheetName === "P00_Value" ? "Cust_ID(No.)" : "Cust_ID";
-        const pathUrl = `${API_BASE}/${sheetName}/${encodeURIComponent(field)}/${encodeURIComponent(idValue)}`;
         const patchWithBody = (url, body) =>
           fetch(url, {
             method: "PATCH",
@@ -182,24 +181,11 @@
             body: JSON.stringify(body),
           });
 
-        let res = await patchWithBody(pathUrl, payload);
-        if (!res.ok) {
-          res = await patchWithBody(pathUrl, { data: payload });
-        }
-        if (res.ok) return res;
-        if (res.status !== 404) {
-          // Some SheetDB projects block PATCH; try PUT fallback.
-          let putRes = await putWithBody(pathUrl, payload);
-          if (!putRes.ok) {
-            putRes = await putWithBody(pathUrl, { data: payload });
-          }
-          return putRes;
-        }
         const params = new URLSearchParams();
         params.set("sheet", sheetName);
         params.set(field, idValue);
         const queryUrl = `${API_BASE}?${params.toString()}`;
-        res = await patchWithBody(queryUrl, payload);
+        let res = await patchWithBody(queryUrl, payload);
         if (!res.ok) {
           res = await patchWithBody(queryUrl, { data: payload });
         }
@@ -352,7 +338,8 @@
                 const extra = saveResult.status ? ` (status ${saveResult.status})` : "";
                 statusText.textContent = `Live location not saved${extra}.`;
                 if (saveResult.detail) {
-                  statusText.textContent += ` ${saveResult.detail}`;
+                  const snippet = saveResult.detail.replace(/\s+/g, " ").slice(0, 140);
+                  statusText.textContent += ` ${snippet}`;
                 }
                 return;
               }
