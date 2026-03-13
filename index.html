@@ -282,7 +282,8 @@
 
       let activeCategory = "Cat 1";
       let activeService = "P00_Human";
-      let API_BASE = localStorage.getItem("10haath_api_base") || API_BASE_DEFAULT;
+      let API_BASE = API_BASE_DEFAULT;
+      localStorage.setItem("10haath_api_base", API_BASE_DEFAULT);
       let SCAN_BASE =
         localStorage.getItem("10haath_scan_base") || SCAN_BASE_DEFAULT;
 
