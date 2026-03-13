@@ -50,7 +50,7 @@
       <header>
         <h1 id="identityHeading">Loading...</h1>
         <div class="subtitle" id="identitySub"></div>
-        <div class="subtitle mono">Build: 2026-03-13 00:40 IST</div>
+        <div class="subtitle mono">Build: 2026-03-13 13:30 IST</div>
         <div class="subtitle" style="color:#ffb27a; font-weight:600;">QRDOCTOR STYLE TABS ACTIVE</div>
       </header>
 
@@ -139,7 +139,9 @@
       function decodeSecret(encoded) {
         if (!encoded) return null;
         try {
-          const b64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+          let b64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+          const pad = b64.length % 4;
+          if (pad) b64 += "=".repeat(4 - pad);
           const json = decodeURIComponent(escape(atob(b64)));
           return JSON.parse(json);
         } catch (e) { return null; }
@@ -360,3 +362,4 @@
     </script>
   </body>
 </html>
+
