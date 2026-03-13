@@ -211,6 +211,13 @@
         }
         return res;
       }
+      async function readResponseText(res) {
+        try {
+          return await res.text();
+        } catch (e) {
+          return "";
+        }
+      }
       async function saveLiveLocation(sheetName, idValue, liveLink, rec) {
         if (!idValue) return { ok: false, mode: "missing_id" };
         const payload = { Timestamp: humanTimestamp(), "Liv location": liveLink };
@@ -241,7 +248,11 @@
           if (!postRes.ok) {
             postRes = await postWithBody({ data: createPayload });
           }
-          return { ok: true, mode: "insert", status: 201 };
+          if (!postRes.ok) {
+            const detail = await readResponseText(postRes);
+            return { ok: false, mode: "insert_failed", status: postRes.status, detail };
+          }
+          return { ok: true, mode: "insert", status: postRes.status };
         } catch (e) { return { ok: false, mode: "fail" }; }
       }
 
@@ -337,7 +348,14 @@
 
               const saveTab = tab || "P00_Human";
               const saveResult = await saveLiveLocation(saveTab, embeddedId, linkValue, record);
-              if (!saveResult.ok) { statusText.textContent = "Live location not saved. Check SheetDB."; return; }
+              if (!saveResult.ok) {
+                const extra = saveResult.status ? ` (status ${saveResult.status})` : "";
+                statusText.textContent = `Live location not saved${extra}.`;
+                if (saveResult.detail) {
+                  statusText.textContent += ` ${saveResult.detail}`;
+                }
+                return;
+              }
               statusText.textContent = "Live location saved.";
 
               const dropdownWrap = document.createElement("div");
